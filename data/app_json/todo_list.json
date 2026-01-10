@@ -1,0 +1,550 @@
+{
+  "schema": {
+    "item": {
+      "id": "string",
+      "title": "string",
+      "status": "todo|in_progress|done|blocked",
+      "who": "string",
+      "when": {
+        "day": "YYYY-MM-DD|null",
+        "week": "YYYY-Www|null",
+        "month": "YYYY-MM|null",
+        "timeframe_label": "this_week|next_week|this_month|later|null"
+      },
+      "notes": "string|null",
+      "source": {
+        "file": "string",
+        "section": "string"
+      }
+    }
+  },
+  "items": [
+    {
+      "id": "hirja-nextweek-english-25-75",
+      "title": "Start speaking with him more English (25–30% EN / 75–70% IND). If daily is hard, split by days or half-days and tell which ones.",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-nextweek-check-document",
+      "title": "Check the document and ask questions if something is unclear or worth discussing.",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-nextweek-finish-baby-menu",
+      "title": "Finish Baby Menu.",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-nextweek-10-free-places",
+      "title": "Make a list of 10+ places to go for free.",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": "Examples already mentioned: ParQ free playground; Cheeky Monkey Playground (should be free for students).",
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-nextweek-10-paid-places",
+      "title": "Make a list of 10 places to go (paid) including prices.",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-nextweek-10-home-games",
+      "title": "Add 10 games/activities for home (not yet in the list).",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-nextweek-10-cartoons-movies",
+      "title": "Add 10 cartoons/movies (not yet in the list).",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "hirja-thismonth-charity-food-visit",
+      "title": "Find charity food events or a household in a bad situation to visit.",
+      "status": "todo",
+      "who": "Hirja",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Hirja / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "vanya-nextweek-finish-baby-menu",
+      "title": "Finish Baby Menu.",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-nextweek-discuss-questions",
+      "title": "Discuss any unclear parts / ask questions.",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-nextweek-5-afterschool-places",
+      "title": "List 5 places to go with him after school (once or twice per month).",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-nextweek-english-80-20",
+      "title": "Start speaking mostly English (80% EN / 20% IND). If daily is hard, split by days or half-days and report which ones in chat.",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-nextweek-5-sunday-places-with-andrei",
+      "title": "List 5 places to go with him + Andrei on Sunday.",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-nextweek-10-home-games",
+      "title": "Add 10 games/activities for home.",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-nextweek-10-cartoons-movies",
+      "title": "Add 10 cartoons/movies (not yet in the list).",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": "2026-W03",
+        "month": "2026-01",
+        "timeframe_label": "next_week"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO NEXT WEEK"
+      }
+    },
+    {
+      "id": "vanya-thismonth-organize-prison-visit",
+      "title": "Organize prison visiting.",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "vanya-thismonth-discuss-topics-with-dante",
+      "title": "Speak with Dante on topics he needs explanations for (with Vanya).",
+      "status": "todo",
+      "who": "Vanya",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Vanya / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-make-paper",
+      "title": "Make Paper.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-control-everyone-todos-final-lists",
+      "title": "Control everyone’s todo and make final lists of activities/movies/etc.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-discuss-questions",
+      "title": "Discuss any unclear parts / ask questions.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-russian-35-65",
+      "title": "Start speaking with him Russian (35% RUS / 65% EN).",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-guidance-teacher-numbers-priority",
+      "title": "Give guidance to teacher about education generally and that she should prioritize practicing numbers/math.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-home-activities",
+      "title": "Home activities.",
+      "status": "done",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": "Home play lego (Wednesday Evening, Sunday if at home). Home play mini football (Wednesday Evening, Sunday if at home). Playful fighting (Wednesday Evening, Sunday if at home). Watching cartoons (Wednesday Evening, Sunday before sleep). Talk sessions. Learning numbers/letters.",
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-where-to-go-sunday",
+      "title": "Where to go Sunday (options list).",
+      "status": "done",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": "Hangout with Rudic kids somewhere (300–500k). Ocean (Sideman/Sanur/Tabanan) (150k). Ubud sauna (400k). Sasha sauna (100k). Kintamani hotspring (400k). Tabanan hotspring (200k). Jatiluwih waterfall/rafting/temple (200k). Bedugul tracking (200k). Hangout at Franky house or other friends (100k). ParQ free playground (150k).",
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-10-cartoons-movies",
+      "title": "10 cartoons/movies (not yet in the list).",
+      "status": "done",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-make-telegram-group-chat",
+      "title": "Make Group chat telegram (Vanya, Hirja, Andrei).",
+      "status": "done",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH"
+      }
+    },
+    {
+      "id": "andrei-thismonth-prepare-dialogues-events",
+      "title": "Prepare dialogues for events (prison, household visit) after Vanya and Hirja.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH (technical/extended list)"
+      }
+    },
+    {
+      "id": "andrei-thismonth-speak-topics-with-dante",
+      "title": "Speak with Dante on topics he needs explanations for (with Vanya).",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH (technical/extended list)"
+      }
+    },
+    {
+      "id": "andrei-thismonth-connect-ai-to-telegram",
+      "title": "Connect AI to the Telegram group chat (transcribe voice messages, summarize reports, combine into one).",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH (technical/extended list)"
+      }
+    },
+    {
+      "id": "andrei-thismonth-add-educational-guidance-qa",
+      "title": "Add educational guidance and question answering.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH (technical/extended list)"
+      }
+    },
+    {
+      "id": "andrei-thismonth-give-access-reports-doc-context",
+      "title": "Give access to all reports, this document, and context.",
+      "status": "todo",
+      "who": "Andrei",
+      "when": {
+        "day": null,
+        "week": null,
+        "month": "2026-01",
+        "timeframe_label": "this_month"
+      },
+      "notes": null,
+      "source": {
+        "file": "data/original_source_file.md",
+        "section": "Andrei / TODO THIS MONTH (technical/extended list)"
+      }
+    }
+  ]
+}

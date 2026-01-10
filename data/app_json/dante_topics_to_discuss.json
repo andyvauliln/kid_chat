@@ -1,0 +1,331 @@
+{
+  "meta": {
+    "title": "Topics to Discuss with Dante",
+    "source": "User-provided markdown list",
+    "created_at": "2026-01-10",
+    "language": "en",
+    "notes": "Assignment can rotate between me, vanya, hirja depending on the week."
+  },
+  "assignment": {
+    "people": ["me", "vanya", "hirja"],
+    "rotation_notes": "Later assign sometimes me, sometimes me+vanya, sometimes vanya+me+hirja.",
+    "default_assignees": []
+  },
+  "topics": [
+    {
+      "id": "schedule-paper",
+      "topic": "All what he need to know about schedule and this paper",
+      "timeframe": "this_week",
+      "category": "routine_schedule",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "movies-cartoons",
+      "topic": "Movies/Cartoons",
+      "timeframe": "this_week",
+      "category": "media",
+      "importance": 2,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "school-education-learning",
+      "topic": "School / Education / Learning",
+      "timeframe": "this_week",
+      "category": "education",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "death-life",
+      "topic": "Death/live",
+      "timeframe": "this_week",
+      "category": "life_concepts",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "violence-kindness",
+      "topic": "Violence/kindness",
+      "timeframe": "this_week",
+      "category": "ethics_behavior",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "emotions-coping",
+      "topic": "Emotion and how to deal with them",
+      "timeframe": "this_week",
+      "category": "emotional_skills",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "animals-care-responsibility",
+      "topic": "Cat, dogs, animals caring and responsibilities",
+      "timeframe": "this_week",
+      "category": "responsibility",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "family-roles-love-rules",
+      "topic": "Mama, Papa, Hirja roles, who is who and who is for what. What is family, rules, another people, interactions with us and another people. Father love, mother love",
+      "timeframe": "this_week",
+      "category": "family_social",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "prison-behaving",
+      "topic": "Prison and behaving",
+      "timeframe": "this_month",
+      "category": "rules_consequences",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "god-karma",
+      "topic": "God / Karma",
+      "timeframe": "this_month",
+      "category": "beliefs_values",
+      "importance": 3,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "time-after-numbers",
+      "topic": "Time (after numbers)",
+      "timeframe": "this_month",
+      "category": "time_numbers",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "life-milestones",
+      "topic": "Live milestones (after numbers and time)",
+      "timeframe": "this_month",
+      "category": "life_concepts",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "life-structure",
+      "topic": "Live structure",
+      "timeframe": "this_month",
+      "category": "routine_schedule",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "reality-basics",
+      "topic": "Reality (Basics)",
+      "timeframe": "this_month",
+      "category": "life_concepts",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "body-basics",
+      "topic": "Body (Basics)",
+      "timeframe": "this_month",
+      "category": "body_health",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "habits-addiction",
+      "topic": "Bad good habits, addiction",
+      "timeframe": "this_month",
+      "category": "habits_self_control",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "delayed-gratification",
+      "topic": "now not good later good, now hard later easy",
+      "timeframe": "this_month",
+      "category": "habits_self_control",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "discipline",
+      "topic": "Discipline",
+      "timeframe": "this_month",
+      "category": "habits_self_control",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "focus",
+      "topic": "Focus",
+      "timeframe": "this_month",
+      "category": "habits_self_control",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "consistency",
+      "topic": "Consistency",
+      "timeframe": "this_month",
+      "category": "habits_self_control",
+      "importance": 5,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    },
+    {
+      "id": "need-vs-want",
+      "topic": "Need/Want",
+      "timeframe": "this_month",
+      "category": "thinking_skills",
+      "importance": 4,
+      "assignees": [],
+      "discussion": {
+        "how_many_times_discussed": 0,
+        "last_time_discussed": null,
+        "is_he_got_it": false,
+        "notes": "",
+        "example_of_explanation": ""
+      }
+    }
+  ]
+}
