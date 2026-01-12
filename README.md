@@ -26,3 +26,6 @@ This project uses **Bot API** via `python-telegram-bot`:
  python -m group_chat_telegram_ai.bot
  ```
  
+## TODO 
+[] transcribe and translate messages
+[] 
