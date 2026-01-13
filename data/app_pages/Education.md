@@ -26,6 +26,7 @@
 - **Current Knowledge:** 
   - Knows numbers and basic operations with numbers
   - Basic understanding of counting
+  - Knows numbers one to ten, but still has trouble with seven and eight
   
 - **Goals for This Month:**
   - Learn all numbers up to 100

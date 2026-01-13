@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 from dataclasses import dataclass
@@ -33,6 +34,8 @@ class FileUpdate:
     file: str
     format: FileFormat
     changes: list[FileChange]
+    reasoning: str | None = None
+    updated_fields: list[str] | None = None
 
 
 def _daily_prompt() -> str:
@@ -54,6 +57,8 @@ def _daily_prompt() -> str:
         "    {\n"
         '      "file": "data/app_pages/Education.md",\n'
         '      "format": "md|json",\n'
+        '      "reasoning": "why this file must be updated based on messages (string)",\n'
+        '      "updated_fields": ["field/path list (for md: section headings; for json: keys or dotted paths)"],\n'
         '      "changes": [\n'
         '        {"type": "added", "data": "..."} ,\n'
         '        {"type": "removed", "data": "..."} ,\n'
@@ -67,6 +72,7 @@ def _daily_prompt() -> str:
         "- If daily_report_messages is empty, set summary to '(no messages)' and output updates=[].\n"
         "- For format=md: include exactly one change with type=updated and a full_document.\n"
         "- For format=json: do NOT include full_document. Use changes with type added/removed/updated and put the structured object(s) in `data`.\n"
+        "- Always include `reasoning` and `updated_fields` for every item in updates.\n"
         "- Do not output updates for files that should not change.\n"
     )
 
@@ -141,7 +147,15 @@ def _parse_updates(payload: dict[str, Any]) -> list[FileUpdate]:
                     full_document=c.get("full_document"),
                 )
             )
-        updates.append(FileUpdate(file=u.get("file"), format=u.get("format"), changes=changes))
+        updates.append(
+            FileUpdate(
+                file=u.get("file"),
+                format=u.get("format"),
+                reasoning=u.get("reasoning"),
+                updated_fields=list(u.get("updated_fields") or []),
+                changes=changes,
+            )
+        )
     return updates
 
 
@@ -239,15 +253,51 @@ def apply_json_changes(current: Any, changes: list[FileChange]) -> tuple[Any, li
     return current, applied
 
 
-def _append_daily_sections(d: date, summary_md: str, updates_log: list[str]) -> str:
+def _json_pretty(obj: Any) -> str:
+    return json.dumps(obj, ensure_ascii=False, indent=2)
+
+
+def _unified_diff(before: str, after: str, *, rel_path: str) -> str:
+    before_lines = before.splitlines(keepends=True)
+    after_lines = after.splitlines(keepends=True)
+    diff = difflib.unified_diff(
+        before_lines,
+        after_lines,
+        fromfile=f"a/{rel_path}",
+        tofile=f"b/{rel_path}",
+    )
+    return "".join(diff).rstrip()
+
+
+def _update_details_md(upd: FileUpdate, *, applied_summary: str, extra_blocks: list[str]) -> str:
+    reasoning = (upd.reasoning or "").strip() or "(missing)"
+    fields = upd.updated_fields or []
+    fields_md = "\n".join(f"- `{f}`" for f in fields) if fields else "- (missing)"
+
+    blocks = "\n\n".join(extra_blocks).strip()
+    blocks_md = f"\n\n{blocks}\n" if blocks else "\n"
+
+    return (
+        f"### {upd.file}\n\n"
+        f"**Applied**: {applied_summary}\n\n"
+        f"**LLM reasoning**\n{reasoning}\n\n"
+        f"**Fields updated (returned by LLM)**\n{fields_md}"
+        f"{blocks_md}"
+    ).rstrip()
+
+
+def _append_daily_sections(d: date, summary_md: str, updates_log: list[str], updates_details: list[str]) -> str:
     report_path = _daily_summary_path(d)
     existing = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
+    details = "\n\n".join(updates_details).strip()
     suffix = (
         "## Summary\n"
         f"{summary_md.strip()}\n"
         "\n## Updates Applied\n"
         + "\n".join(f"- {x}" for x in updates_log)
         + "\n"
+        + "\n## Updates Details (LLM)\n"
+        + (details + "\n" if details else "(none)\n")
     )
     new_text = (existing.rstrip() + "\n\n" + suffix).lstrip() if existing.strip() else suffix
     _write_text(report_path, new_text)
@@ -281,6 +331,7 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
 
     updates = _parse_updates(parsed)
     updates_log: list[str] = []
+    updates_details: list[str] = []
 
     for upd in updates:
         abs_path = REPO_ROOT / upd.file
@@ -292,8 +343,12 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                     break
             if full_doc is None:
                 raise ValueError(f"Missing full_document for md update: {upd.file}")
+            before = _read_text(abs_path) if abs_path.exists() else ""
             _write_text(abs_path, full_doc)
             updates_log.append(f"{upd.file}: updated (md full_document)")
+            diff_text = _unified_diff(before, full_doc, rel_path=upd.file)
+            extra = [f"```diff\n{diff_text}\n```"] if diff_text else ["```diff\n(no diff)\n```"]
+            updates_details.append(_update_details_md(upd, applied_summary="updated (md full_document)", extra_blocks=extra))
             continue
 
         if upd.format == "json":
@@ -303,13 +358,20 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                 changes=upd.changes,
             )
             _write_json(abs_path, updated_obj)
-            updates_log.append(f"{upd.file}: updated (json {', '.join(applied) if applied else 'no-op'})")
+            applied_summary = f"updated (json {', '.join(applied) if applied else 'no-op'})"
+            updates_log.append(f"{upd.file}: {applied_summary}")
+            extra_blocks: list[str] = []
+            for ch in upd.changes:
+                if ch.data is None:
+                    continue
+                extra_blocks.append(f"**{ch.type}**\n```json\n{_json_pretty(ch.data)}\n```")
+            updates_details.append(_update_details_md(upd, applied_summary=applied_summary, extra_blocks=extra_blocks))
             continue
 
         raise ValueError(f"Unknown format: {upd.format} for {upd.file}")
 
     summary_md = str(parsed.get("summary") or "").strip() or "(no summary)"
-    report_text = _append_daily_sections(d, summary_md=summary_md, updates_log=updates_log)
+    report_text = _append_daily_sections(d, summary_md=summary_md, updates_log=updates_log, updates_details=updates_details)
 
     return {
         "date": d.isoformat(),
