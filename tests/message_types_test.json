@@ -60,7 +60,7 @@
           "data/app_pages/Dante Summary File.md",
           "data/app_pages/Behavioral Data.md"
         ],
-        "response": null
+        "response_not_null": true
       }
     },
     {
@@ -99,7 +99,7 @@
       "expected": {
         "needs_context": true,
         "context_files_must_include": ["Menu.md"],
-        "response": null
+        "response_not_null": true
       }
     },
     {
@@ -216,7 +216,7 @@
       "expected": {
         "needs_context": true,
         "context_files_must_include": ["Menu.md"],
-        "response": null
+        "response_not_null": true
       }
     },
     {
@@ -293,7 +293,7 @@
       "expected": {
         "needs_context": true,
         "context_files_must_include": ["Schedule.md"],
-        "response": null
+        "response_not_null": true
       }
     },
     {

@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from group_chat_telegram_ai.handle_message import (
     AVAILABLE_MODELS,
     RouterResult,
-    route_message,
+    handle_telegram_message,
 )
 
 TEST_FILE = Path(__file__).parent / "message_types_test.json"
@@ -122,7 +122,12 @@ async def run_test(test_case: dict, model_id: str | None) -> dict:
     start_time = datetime.now()
     
     try:
-        result: RouterResult = await route_message(test_case["input"], model=model_id)
+        input_payload = test_case["input"]
+        telegram_message = {
+            "from": {"username": input_payload.get("username") or ""},
+            "text": input_payload.get("message_raw") or "",
+        }
+        result: RouterResult = await handle_telegram_message(telegram_message, model=model_id)
         
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
         

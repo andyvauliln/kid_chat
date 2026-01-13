@@ -1,17 +1,17 @@
 {
-  "timestamp": "2026-01-14T05:28:07.153487",
+  "timestamp": "2026-01-14T06:15:34.725619",
   "model": "google/gemini-2.0-flash-001",
   "model_name": "Gemini 2.0 Flash (google/gemini-2.0-flash-001)",
   "summary": {
-    "total": 2,
-    "passed": 2,
+    "total": 25,
+    "passed": 25,
     "failed": 0,
     "errors": 0,
     "score_percent": 100.0,
-    "total_input_tokens": 2318,
-    "total_output_tokens": 140,
-    "total_cost_usd": 0.0002878,
-    "total_duration_ms": 2897.5110000000004
+    "total_input_tokens": 34931,
+    "total_output_tokens": 3543,
+    "total_cost_usd": 0.0049103,
+    "total_duration_ms": 45016.73100000001
   },
   "results": [
     {
@@ -39,7 +39,99 @@
       "input_tokens": 1158,
       "output_tokens": 69,
       "cost_usd": 0.0001434,
-      "duration_ms": 1520.566,
+      "duration_ms": 1400.2930000000001,
+      "errors": []
+    },
+    {
+      "test_id": "T02",
+      "name": "Video watched - liked",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "He watched PJ Masks today, he really liked it!"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "He watched PJ Masks today, he really liked it!",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1158,
+      "output_tokens": 68,
+      "cost_usd": 0.000143,
+      "duration_ms": 1145.2610000000002,
+      "errors": []
+    },
+    {
+      "test_id": "T03",
+      "name": "Video watched - disliked",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Watched Encanto, didn't like it, got bored after 30 minutes"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Watched Encanto, didn't like it, got bored after 30 minutes",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1164,
+      "output_tokens": 75,
+      "cost_usd": 0.0001464,
+      "duration_ms": 1407.0549999999998,
+      "errors": []
+    },
+    {
+      "test_id": "T04",
+      "name": "Question needing guidance",
+      "status": "pass",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Dante doesn't want to study numbers, what should I do?"
+      },
+      "output": {
+        "username": "Vanya",
+        "message_en": "Dante doesn't want to study numbers. What should I do?",
+        "needs_context": true,
+        "context_files": [
+          "data/app_pages/Education.md",
+          "data/app_pages/Dante Summary File.md",
+          "data/app_pages/Behavioral Data.md"
+        ],
+        "question_for_next_llm": "Based on Dante's learning style, interests, education plan, and behavior patterns, what practical steps should we try to help him engage with learning numbers?",
+        "response": "Based on Dante's profile, here are some practical steps to help him engage with learning numbers:\n\n1.  **Address Potential ADHD:** Given the possibility of ADHD and his short attention span, consider consulting with a specialist for assessment and tailored strategies.\n2.  **Incorporate Interests:**\n    *   **Gamification:** Turn learning numbers into a game. Use toys, blocks, or even his \"Hulk\" persona to count and perform basic operations.\n    *   **Relate to Interests:** Connect numbers to his interests like nature or travel (mentioned in Hirja's profile). For example, count the number of trees in a park or talk about distances between places.\n3.  **Short, Engaging Sessions:**\n    *   **Limit Time:** Keep numeracy sessions short (5-15 minutes) to match his attention span.\n    *   **Variety:** Switch activities frequently to maintain engagement.\n4.  **Utilize Educational Resources:**\n    *   **Numberblocks:** Continue using Numberblocks videos but break them into smaller segments. Make it interactive by pausing and asking questions.\n5.  **Positive Reinforcement:**\n    *   **Reward System:** Use a reward system for completing numeracy tasks. This could be verbal praise, stickers, or small, non-material rewards.\n    *   **Focus on Progress:** Acknowledge and praise his efforts and improvements, not just the final result.\n6.  **Language Considerations:**\n    *   **English and Indonesian:** Use a mix of English and Indonesian when teaching numbers, especially with Hirja. Gradually increase the English component as his comprehension improves.\n7.  **Incorporate Movement:**\n    *   **Active Learning:** Combine learning with physical activity. For example, count steps while walking or jumping.\n8.  **Consistent Approach Among Caregivers:**\n    *   **Unified Strategy:** Ensure all caregivers (Hirja, Vanya, and Andrei) use a consistent approach and reinforce the same concepts.\n9.  **Address Behavioral Triggers:**\n    *   **Avoid Overwhelm:** Be mindful of situations that trigger negative behaviors. Break down tasks into smaller, manageable steps to prevent him from feeling overwhelmed.\n    *   **Positive Communication:** Use positive language and avoid direct confrontation. Frame learning as a fun activity rather than a chore.\n10. **Authority and Respect:**\n    *   **Papa's Authority:** Reinforce Andrei's authority by referencing his decisions in a respectful manner. This helps establish boundaries and encourages compliance.\n11. **Daily Reflection:**\n    *   **Adapt Questions:** Modify the daily reflection questions to include numeracy-related topics. For example, \"How many things did you count today?\"\n\nIt would be beneficial to have more information on Dante's specific interests and preferred learning methods to tailor the approach further. Additionally, consulting with an educational psychologist or specialist could provide more targeted strategies for addressing his potential ADHD and learning challenges."
+      },
+      "expected": {
+        "needs_context": true,
+        "context_files_must_include": [
+          "data/app_pages/Education.md",
+          "data/app_pages/Dante Summary File.md",
+          "data/app_pages/Behavioral Data.md"
+        ],
+        "response_not_null": true
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 3947,
+      "output_tokens": 788,
+      "cost_usd": 0.0007099000000000001,
+      "duration_ms": 6777.670999999999,
       "errors": []
     },
     {
@@ -67,7 +159,580 @@
       "input_tokens": 1160,
       "output_tokens": 71,
       "cost_usd": 0.0001444,
-      "duration_ms": 1376.9450000000002,
+      "duration_ms": 1010.0420000000001,
+      "errors": []
+    },
+    {
+      "test_id": "T06",
+      "name": "Todo completed in message",
+      "status": "pass",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Hirja finished the baby menu task"
+      },
+      "output": {
+        "username": "Andrei",
+        "message_en": "Hirja finished the baby menu task",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1154,
+      "output_tokens": 65,
+      "cost_usd": 0.00014140000000000002,
+      "duration_ms": 1296.714,
+      "errors": []
+    },
+    {
+      "test_id": "T07",
+      "name": "Todo completed with question",
+      "status": "pass",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Hirja finished the baby menu, can you check if it's complete?"
+      },
+      "output": {
+        "username": "Andrei",
+        "message_en": "Hirja finished the baby menu, can you check if it's complete?",
+        "needs_context": true,
+        "context_files": [
+          "data/app_pages/Menu.md"
+        ],
+        "question_for_next_llm": "Based on the current baby menu, is it complete and nutritionally balanced for Dante's age and dietary needs?",
+        "response": "I need more information to determine if Hirja's baby menu is complete and nutritionally balanced for Dante. The current menu is missing. To assess the menu, I need to know:\n\n1.  **Dante's age:** Nutritional needs vary significantly with age.\n2.  **Dante's dietary needs and restrictions:** Does Dante have any allergies or specific dietary requirements?\n3.  **The actual menu:** What specific food items and quantities are included in the menu?"
+      },
+      "expected": {
+        "needs_context": true,
+        "context_files_must_include": [
+          "Menu.md"
+        ],
+        "response_not_null": true
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1299,
+      "output_tokens": 223,
+      "cost_usd": 0.0002191,
+      "duration_ms": 3182.6330000000003,
+      "errors": []
+    },
+    {
+      "test_id": "T08",
+      "name": "Behavior incident",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante had big hysteric at playground because other kid took his toy. Screamed for 15 minutes. I hugged him and explained about sharing."
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Dante had a big tantrum at the playground because another kid took his toy. He screamed for 15 minutes. I hugged him and explained about sharing.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1178,
+      "output_tokens": 90,
+      "cost_usd": 0.0001538,
+      "duration_ms": 1409.5439999999999,
+      "errors": []
+    },
+    {
+      "test_id": "T09",
+      "name": "Schedule notification",
+      "status": "pass",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Tomorrow I'll take Dante to the dentist at 10am instead of school"
+      },
+      "output": {
+        "username": "Vanya",
+        "message_en": "Tomorrow I'll take Dante to the dentist at 10am instead of school.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1164,
+      "output_tokens": 75,
+      "cost_usd": 0.0001464,
+      "duration_ms": 1273.104,
+      "errors": []
+    },
+    {
+      "test_id": "T10",
+      "name": "Concern about behavior",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "I'm worried that Dante is watching too much screen, today already 3 hours"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "I'm worried that Dante is watching too much screen. Today, it's already been 3 hours.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1164,
+      "output_tokens": 80,
+      "cost_usd": 0.00014840000000000003,
+      "duration_ms": 1110.708,
+      "errors": []
+    },
+    {
+      "test_id": "T11",
+      "name": "Simple acknowledgment",
+      "status": "pass",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Ok thanks"
+      },
+      "output": {
+        "username": "Vanya",
+        "message_en": "Ok thanks",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1149,
+      "output_tokens": 60,
+      "cost_usd": 0.00013890000000000002,
+      "duration_ms": 1295.236,
+      "errors": []
+    },
+    {
+      "test_id": "T12",
+      "name": "Greeting",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Good morning everyone"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Good morning everyone",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1150,
+      "output_tokens": 61,
+      "cost_usd": 0.0001394,
+      "duration_ms": 1246.416,
+      "errors": []
+    },
+    {
+      "test_id": "T13",
+      "name": "Direct message to person",
+      "status": "pass",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Hirja, please send me the receipt from yesterday"
+      },
+      "output": {
+        "username": "Andrei",
+        "message_en": "Hirja, please send me the receipt from yesterday",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1157,
+      "output_tokens": 68,
+      "cost_usd": 0.0001429,
+      "duration_ms": 1388.13,
+      "errors": []
+    },
+    {
+      "test_id": "T14",
+      "name": "Request to add video",
+      "status": "pass",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Add Lion King to video list, it's good for learning about responsibility"
+      },
+      "output": {
+        "username": "Vanya",
+        "message_en": "Add Lion King to the video list. It's good for learning about responsibility.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1162,
+      "output_tokens": 74,
+      "cost_usd": 0.00014580000000000002,
+      "duration_ms": 1398.396,
+      "errors": []
+    },
+    {
+      "test_id": "T15",
+      "name": "FYI with new info about Dante",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Just noticed Dante really likes playing with building blocks, very focused when doing it"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Just noticed Dante really likes playing with building blocks, very focused when doing it",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1162,
+      "output_tokens": 73,
+      "cost_usd": 0.0001454,
+      "duration_ms": 1302.185,
+      "errors": []
+    },
+    {
+      "test_id": "T16",
+      "name": "Food preference discovered (dislikes vegetables)",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante refused to eat vegetables again. He only wanted rice and chicken. What can I do to make him eat vegetables?"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Dante refused to eat vegetables again. He only wanted rice and chicken. What can I do to make him eat vegetables?",
+        "needs_context": true,
+        "context_files": [
+          "data/app_pages/Dante Summary File.md",
+          "data/app_pages/Menu.md",
+          "data/app_pages/Behavioral Data.md"
+        ],
+        "question_for_next_llm": "Based on Dante's dietary preferences, typical behavior, and the current menu, what strategies can be used to encourage him to eat vegetables?",
+        "response": "Based on Dante's preference for rice and chicken and his general behavioral patterns, here are some strategies to encourage him to eat vegetables:\n\n1.  **Incorporate Vegetables into Preferred Foods:**\n    *   Puree vegetables and mix them into sauces for the rice or chicken. This can mask the taste and texture of the vegetables.\n    *   Finely chop vegetables and add them to chicken dishes like stir-fries or casseroles.\n\n2.  **Make Vegetables Fun and Appealing:**\n    *   Cut vegetables into fun shapes using cookie cutters.\n    *   Arrange vegetables on a plate in a creative way, like making a face or a picture.\n    *   Serve vegetables with a dip that Dante enjoys, such as hummus or a yogurt-based dip.\n\n3.  **Introduce Vegetables Gradually:**\n    *   Offer small portions of vegetables alongside his preferred foods.\n    *   Introduce one new vegetable at a time to see which ones he might be more receptive to.\n\n4.  **Positive Reinforcement:**\n    *   Praise and reward Dante for trying vegetables, even if he only takes a small bite. Avoid using food as a reward (e.g., \"If you eat your vegetables, you can have dessert\"). Instead, offer non-food rewards like stickers or extra playtime.\n\n5.  **Model Good Eating Habits:**\n    *   Ensure that all caregivers (Mama, Papa, and Hirja) eat vegetables and show enjoyment while doing so. Dante is more likely to try vegetables if he sees others eating them.\n\n6.  **Involve Dante in Meal Preparation:**\n    *   Let Dante help wash, chop (with supervision), or prepare vegetables. He may be more willing to try something he helped create.\n\n7.  **Consistent Messaging and Authority:**\n    *   Since Dante responds to authority, ensure all caregivers are consistent in encouraging him to eat vegetables. Referencing Papa's authority might be helpful: \"Papa wants you to try some vegetables because they are good for you.\"\n\n8.  **Address Potential ADHD Characteristics:**\n    *   Given Dante's potential ADHD, keep mealtimes structured and minimize distractions. Offer vegetables at the beginning of the meal when he is less likely to be overwhelmed.\n\n9. **Escalation Process:**\n*   Follow the recommended escalation process for discipline. Start with a normal explanation and request, and escalate if necessary. Always make peace afterward with a hug and reassurance.\n\nTo provide more tailored advice, it would be helpful to know:\n\n*   **What vegetables have already been tried and what was Dante's reaction to them?**\n*   **What are the typical mealtime dynamics and environment?**\n*   **What are some of Dante's favorite characters or stories?** (These could be used to create themed meals or make the vegetables more appealing.)"
+      },
+      "expected": {
+        "needs_context": true,
+        "context_files_must_include": [
+          "Menu.md"
+        ],
+        "response_not_null": true
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 3320,
+      "output_tokens": 795,
+      "cost_usd": 0.0006500000000000001,
+      "duration_ms": 6316.481,
+      "errors": []
+    },
+    {
+      "test_id": "T17",
+      "name": "Education progress report",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Today Dante learned numbers one to ten, he can do it but still has trouble with seven and eight"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Today Dante learned numbers one to ten. He can do it but still has trouble with seven and eight.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1167,
+      "output_tokens": 78,
+      "cost_usd": 0.00014790000000000002,
+      "duration_ms": 1015.6050000000001,
+      "errors": []
+    },
+    {
+      "test_id": "T18",
+      "name": "Andrei approves idea",
+      "status": "pass",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Yes, let's add swimming to Sunday. Good idea Vanya"
+      },
+      "output": {
+        "username": "Andrei",
+        "message_en": "Yes, let's add swimming to Sunday. Good idea Vanya",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1161,
+      "output_tokens": 72,
+      "cost_usd": 0.0001449,
+      "duration_ms": 1127.44,
+      "errors": []
+    },
+    {
+      "test_id": "T19",
+      "name": "Andrei rejects idea",
+      "status": "pass",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "No swimming for now, maybe next month when weather is better"
+      },
+      "output": {
+        "username": "Andrei",
+        "message_en": "No swimming for now, maybe next month when the weather is better.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1159,
+      "output_tokens": 71,
+      "cost_usd": 0.0001443,
+      "duration_ms": 1318.9679999999998,
+      "errors": []
+    },
+    {
+      "test_id": "T20",
+      "name": "Request translate to Indonesian",
+      "status": "pass",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Translate to Indonesian: Dante needs to eat vegetables every day"
+      },
+      "output": {
+        "username": "Andrei",
+        "message_en": "Translate to Indonesian: Dante needs to eat vegetables every day",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": "Dante harus makan sayur setiap hari."
+      },
+      "expected": {
+        "needs_context": false,
+        "response_not_null": true
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1158,
+      "output_tokens": 78,
+      "cost_usd": 0.000147,
+      "duration_ms": 1374.476,
+      "errors": []
+    },
+    {
+      "test_id": "T21",
+      "name": "Health issue report",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante has fever today, 38.5 degrees. Gave him paracetamol and he is resting"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Dante has a fever today, 38.5 degrees. Gave him paracetamol and he is resting.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1168,
+      "output_tokens": 80,
+      "cost_usd": 0.0001488,
+      "duration_ms": 1286.998,
+      "errors": []
+    },
+    {
+      "test_id": "T22",
+      "name": "Question about schedule",
+      "status": "pass",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "What activities are planned for this Sunday?"
+      },
+      "output": {
+        "username": "Vanya",
+        "message_en": "What activities are planned for this Sunday?",
+        "needs_context": true,
+        "context_files": [
+          "data/app_pages/Schedule.md"
+        ],
+        "question_for_next_llm": "What activities are planned for this Sunday according to the schedule?",
+        "response": "On Sundays, the schedule includes waking up and bath routine around 7:30 (flexible), breakfast around 8:00 (flexible), and going somewhere or staying at home (flexible) from 10:00 to 22:00. Once a month, Vanya joins for at least 5 hours, and they rotate who chooses the activity. Sometimes, there can be a sleepover with Andrei until school on Monday."
+      },
+      "expected": {
+        "needs_context": true,
+        "context_files_must_include": [
+          "Schedule.md"
+        ],
+        "response_not_null": true
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1965,
+      "output_tokens": 193,
+      "cost_usd": 0.00027370000000000004,
+      "duration_ms": 2575.4410000000003,
+      "errors": []
+    },
+    {
+      "test_id": "T23",
+      "name": "Multiple updates - food preference + video + behavior",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Today Dante ate fish for lunch (he liked it!), watched Numberblocks for 30 min, then had small tantrum when I said no candy"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Today Dante ate fish for lunch (he liked it!), watched Numberblocks for 30 min, then had a small tantrum when I said no candy.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1177,
+      "output_tokens": 89,
+      "cost_usd": 0.0001533,
+      "duration_ms": 1159.577,
+      "errors": []
+    },
+    {
+      "test_id": "T24",
+      "name": "Indonesian message - social behavior",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Hari ini Dante bermain dengan teman-temannya di sekolah. Dia berbagi mainan dengan baik."
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Today, Dante played with his friends at school. He shared toys well.",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1166,
+      "output_tokens": 72,
+      "cost_usd": 0.0001454,
+      "duration_ms": 1124.2069999999999,
+      "errors": []
+    },
+    {
+      "test_id": "T25",
+      "name": "New cartoon discovered - idea for Andrei",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Found good cartoon called Bluey, seems educational and fun. Should we add it?"
+      },
+      "output": {
+        "username": "Hirja",
+        "message_en": "Found a good cartoon called Bluey, seems educational and fun. Should we add it?",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": null
+      },
+      "expected": {
+        "needs_context": false,
+        "response": null,
+        "context_files_must_include": []
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 1164,
+      "output_tokens": 75,
+      "cost_usd": 0.0001464,
+      "duration_ms": 1074.1499999999999,
       "errors": []
     }
   ]
