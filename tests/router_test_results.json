@@ -1,0 +1,153 @@
+{
+  "timestamp": "2026-01-14T02:35:55.314067",
+  "model": "google/gemini-2.0-flash-001",
+  "model_name": "Gemini 2.0 Flash (google/gemini-2.0-flash-001)",
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "errors": 0,
+    "score_percent": 100.0,
+    "total_input_tokens": 5054,
+    "total_output_tokens": 660,
+    "total_cost_usd": 0.0007694,
+    "total_duration_ms": 5451.43
+  },
+  "results": [
+    {
+      "test_id": "T01",
+      "name": "Simple food report",
+      "status": "pass",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante makan 2 telur dan pisang pagi ini"
+      },
+      "output": {
+        "message_en": "Dante ate 2 eggs and banana this morning",
+        "username": "Hirja",
+        "intent": "report_daily",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": "Noted breakfast. Good protein with eggs!",
+        "file_updates": [
+          {
+            "file": "data/daily_reports/2026-01-14.md",
+            "action": "append",
+            "section": null,
+            "what": "[Hirja] Dante ate 2 eggs and banana this morning",
+            "key": null
+          },
+          {
+            "file": "data/app_pages/Menu.md",
+            "action": "append",
+            "section": "Daily Food Log",
+            "what": "2026-01-14 Breakfast: 2 eggs, banana",
+            "key": null
+          }
+        ]
+      },
+      "expected": {
+        "message_en": "Dante ate 2 eggs and banana this morning",
+        "intent": "report_daily",
+        "needs_context": false,
+        "response": "contains: breakfast OR noted",
+        "file_updates_must_include": [
+          {
+            "file": "data/daily_reports/"
+          },
+          {
+            "file": "data/app_pages/Menu.md"
+          }
+        ]
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 2526,
+      "output_tokens": 239,
+      "cost_usd": 0.0003482,
+      "duration_ms": 2674.4300000000003,
+      "errors": []
+    },
+    {
+      "test_id": "T05",
+      "name": "Idea with new info about Dante",
+      "status": "pass",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "I think we should add swimming to Sunday activities, Dante loves water"
+      },
+      "output": {
+        "message_en": "I think we should add swimming to Sunday activities, Dante loves water",
+        "username": "Vanya",
+        "intent": "idea_suggestion",
+        "needs_context": false,
+        "context_files": [],
+        "question_for_next_llm": null,
+        "response": "Good idea! Added for Andrei to review. Also noted that Dante loves water.",
+        "file_updates": [
+          {
+            "file": "data/daily_reports/2026-01-14.md",
+            "action": "append",
+            "section": null,
+            "what": "[Vanya] I think we should add swimming to Sunday activities, Dante loves water",
+            "key": null
+          },
+          {
+            "file": "data/app_pages/Schedule.md",
+            "action": "append",
+            "section": "Ideas to Discuss",
+            "what": "Swimming on Sunday - suggested by Vanya",
+            "key": null
+          },
+          {
+            "file": "data/app_json/todo_list.json",
+            "action": "add",
+            "section": null,
+            "what": {
+              "id": "andrei-decide-swimming",
+              "title": "Decide on adding swimming to Sunday activities",
+              "status": "todo",
+              "who": "Andrei",
+              "notes": "Suggested by Vanya - Dante loves water"
+            },
+            "key": null
+          },
+          {
+            "file": "data/app_pages/Dante Summary File.md",
+            "action": "append",
+            "section": "His Background",
+            "what": "Loves water/swimming",
+            "key": null
+          }
+        ]
+      },
+      "expected": {
+        "intent": "idea_suggestion",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {
+            "file": "data/daily_reports/"
+          },
+          {
+            "file": "data/app_pages/Schedule.md",
+            "what_contains": "swimming"
+          },
+          {
+            "file": "data/app_json/todo_list.json",
+            "what_contains": "Andrei AND swimming"
+          },
+          {
+            "file": "data/app_pages/Dante Summary File.md",
+            "what_contains": "water OR swimming"
+          }
+        ]
+      },
+      "model": "google/gemini-2.0-flash-001",
+      "input_tokens": 2528,
+      "output_tokens": 421,
+      "cost_usd": 0.00042120000000000005,
+      "duration_ms": 2777.0,
+      "errors": []
+    }
+  ]
+}
