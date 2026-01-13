@@ -1,0 +1,416 @@
+{
+  "description": "Test cases for message router. Send each input to the router, compare output with expected fields.",
+  "how_to_test": "1. Run each test input through the message router. 2. Check that output matches expected (use 'contains' for partial matches). 3. Mark pass/fail for each test.",
+  "test_cases": [
+    {
+      "id": "T01",
+      "name": "Simple food report",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante makan 2 telur dan pisang pagi ini"
+      },
+      "expected": {
+        "message_en": "Dante ate 2 eggs and banana this morning",
+        "intent": "report_daily",
+        "needs_context": false,
+        "response": "contains: breakfast OR noted",
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Menu.md"}
+        ]
+      },
+      "dev_notes": [
+        "1) we don't need update Menu in this case Menu represents his Menu, his preferences or what he don't like, parent notes, ai notes. In this message it's noting about it",
+        "2) response in this case should be null, ai ll just update data, and we make fixed response about what files are was changed and what the chanage "
+        "3) i think at this point we know what we should update so we can include in response exact message {'file': 'data/app_pages/Menu.md', 'what': '2026-01-14 Breakfast: 2 eggs, banana'}
+         so program should understand if we has 'what' and file to update we just need add row to json or to file. 
+         If we need check if this information already exist in a document or in a list so we need run llm for that 
+         in case of report we don't need but if it's new video we need to add or notes about his education or behavioral data
+         we need to call llm so i would suggest add some param that will say what to do. in case if we need update llm for example: next_llm_prompt: "Update file x and add there this iformation if it's not exist" and it's empty and what has something we just add to the end or row "
+      ]
+    },
+    {
+      "id": "T02",
+      "name": "Video watched - liked",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "He watched PJ Masks today, he really liked it!"
+      },
+      "expected": {
+        "intent": "report_daily",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/video.json", "what_contains": "PJ Masks AND liked=true"}
+        ]
+      }
+    },
+    {
+      "id": "T03",
+      "name": "Video watched - disliked",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Watched Encanto, didn't like it, got bored after 30 minutes"
+      },
+      "expected": {
+        "intent": "report_daily",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/video.json", "what_contains": "Encanto AND liked=false"}
+        ]
+      }
+    },
+    {
+      "id": "T04",
+      "name": "Question needing guidance",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Dante doesn't want to study numbers, what should I do?"
+      },
+      "expected": {
+        "intent": "question_guidance",
+        "needs_context": true,
+        "context_files_must_include": ["Education.md", "Dante Summary"],
+        "question_for_next_llm": "contains: numbers",
+        "response": null,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"}
+        ]
+      }
+    },
+    {
+      "id": "T05",
+      "name": "Idea with new info about Dante",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "I think we should add swimming to Sunday activities, Dante loves water"
+      },
+      "expected": {
+        "intent": "idea_suggestion",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Schedule.md", "what_contains": "swimming"},
+          {"file": "data/app_json/todo_list.json", "what_contains": "Andrei AND swimming"},
+          {"file": "data/app_pages/Dante Summary File.md", "what_contains": "water OR swimming"}
+        ]
+      }
+    },
+    {
+      "id": "T06",
+      "name": "Todo completed in message",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Hirja finished the baby menu task"
+      },
+      "expected": {
+        "intent": "info_fyi",
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/todo_list.json", "what_contains": "baby-menu AND status=done"}
+        ]
+      }
+    },
+    {
+      "id": "T07",
+      "name": "Todo completed with question",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Hirja finished the baby menu, can you check if it's complete?"
+      },
+      "expected": {
+        "intent": "question_info",
+        "needs_context": true,
+        "context_files_must_include": ["Menu.md"],
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/todo_list.json", "what_contains": "baby-menu AND status=done"}
+        ]
+      }
+    },
+    {
+      "id": "T08",
+      "name": "Behavior incident",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante had big hysteric at playground because other kid took his toy. Screamed for 15 minutes. I hugged him and explained about sharing."
+      },
+      "expected": {
+        "intent": "report_incident",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Behavioral Data.md", "what_contains": "hysteric OR playground"}
+        ]
+      }
+    },
+    {
+      "id": "T09",
+      "name": "Schedule notification",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Tomorrow I'll take Dante to the dentist at 10am instead of school"
+      },
+      "expected": {
+        "intent": "schedule_notify",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Schedule.md", "what_contains": "dentist"}
+        ]
+      }
+    },
+    {
+      "id": "T10",
+      "name": "Concern about behavior",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "I'm worried that Dante is watching too much screen, today already 3 hours"
+      },
+      "expected": {
+        "intent": "concern_warning",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Behavioral Data.md", "what_contains": "screen time"}
+        ]
+      }
+    },
+    {
+      "id": "T11",
+      "name": "Simple acknowledgment",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Ok thanks"
+      },
+      "expected": {
+        "intent": "acknowledge",
+        "needs_context": false,
+        "response": null,
+        "file_updates_must_include": []
+      }
+    },
+    {
+      "id": "T12",
+      "name": "Greeting",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Good morning everyone"
+      },
+      "expected": {
+        "intent": "greeting",
+        "needs_context": false,
+        "response": null,
+        "file_updates_must_include": []
+      }
+    },
+    {
+      "id": "T13",
+      "name": "Direct message to person",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Hirja, please send me the receipt from yesterday"
+      },
+      "expected": {
+        "intent": "direct_message",
+        "needs_context": false,
+        "response": null,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"}
+        ]
+      }
+    },
+    {
+      "id": "T14",
+      "name": "Request to add video",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "Add Lion King to video list, it's good for learning about responsibility"
+      },
+      "expected": {
+        "intent": "request_update",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/video.json", "action": "add", "what_contains": "Lion King"}
+        ]
+      }
+    },
+    {
+      "id": "T15",
+      "name": "FYI with new info about Dante",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Just noticed Dante really likes playing with building blocks, very focused when doing it"
+      },
+      "expected": {
+        "intent": "info_fyi",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Dante Summary File.md", "what_contains": "building blocks"}
+        ]
+      }
+    },
+    {
+      "id": "T16",
+      "name": "Mixed report + question",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante refused to eat vegetables again. He only wanted rice and chicken. What can I do to make him eat vegetables?"
+      },
+      "expected": {
+        "intent": "question_guidance",
+        "needs_context": true,
+        "context_files_must_include": ["Menu.md"],
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Menu.md", "what_contains": "vegetables OR refused"}
+        ]
+      }
+    },
+    {
+      "id": "T17",
+      "name": "Education progress report",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Today Dante learned numbers one to ten, he can do it but still has trouble with seven and eight"
+      },
+      "expected": {
+        "intent": "report_daily",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Education.md", "what_contains": "numbers"}
+        ]
+      }
+    },
+    {
+      "id": "T18",
+      "name": "Andrei approves idea",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Yes, let's add swimming to Sunday. Good idea Vanya"
+      },
+      "expected": {
+        "intent": "acknowledge",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Schedule.md", "what_contains": "swimming"},
+          {"file": "data/app_json/todo_list.json", "what_contains": "swimming AND status=done"}
+        ]
+      }
+    },
+    {
+      "id": "T19",
+      "name": "Andrei rejects idea",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "No swimming for now, maybe next month when weather is better"
+      },
+      "expected": {
+        "intent": "acknowledge",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/todo_list.json", "what_contains": "swimming AND status=done"}
+        ]
+      }
+    },
+    {
+      "id": "T20",
+      "name": "Request translate to Indonesian",
+      "input": {
+        "username": "Andrei",
+        "message_raw": "Translate to Indonesian: Dante needs to eat vegetables every day"
+      },
+      "expected": {
+        "intent": "request_translate",
+        "needs_context": false,
+        "response": "contains: Indonesian translation"
+      }
+    },
+    {
+      "id": "T21",
+      "name": "Health issue report",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Dante has fever today, 38.5 degrees. Gave him paracetamol and he is resting"
+      },
+      "expected": {
+        "intent": "report_incident",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Behavioral Data.md", "section": "Health", "what_contains": "fever"}
+        ]
+      }
+    },
+    {
+      "id": "T22",
+      "name": "Question about schedule",
+      "input": {
+        "username": "Vanya",
+        "message_raw": "What activities are planned for this Sunday?"
+      },
+      "expected": {
+        "intent": "question_info",
+        "needs_context": true,
+        "context_files_must_include": ["Schedule.md"],
+        "response": null
+      }
+    },
+    {
+      "id": "T23",
+      "name": "Multiple updates in one message",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Today Dante ate fish for lunch (he liked it!), watched Numberblocks for 30 min, then had small tantrum when I said no candy"
+      },
+      "expected": {
+        "intent": "report_daily",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Menu.md", "what_contains": "fish"},
+          {"file": "data/app_json/video.json", "what_contains": "Numberblocks"},
+          {"file": "data/app_pages/Behavioral Data.md", "what_contains": "tantrum"}
+        ]
+      }
+    },
+    {
+      "id": "T24",
+      "name": "Indonesian voice message simulation",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Hari ini Dante bermain dengan teman-temannya di sekolah. Dia berbagi mainan dengan baik."
+      },
+      "expected": {
+        "message_en": "contains: played with friends AND shared toys",
+        "intent": "report_daily",
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_pages/Behavioral Data.md", "what_contains": "sharing OR social"}
+        ]
+      }
+    },
+    {
+      "id": "T25",
+      "name": "New cartoon discovered",
+      "input": {
+        "username": "Hirja",
+        "message_raw": "Found good cartoon called Bluey, seems educational and fun. Should we add it?"
+      },
+      "expected": {
+        "intent": "idea_suggestion",
+        "needs_context": false,
+        "file_updates_must_include": [
+          {"file": "data/daily_reports/"},
+          {"file": "data/app_json/todo_list.json", "what_contains": "Bluey AND Andrei"}
+        ]
+      }
+    }
+  ]
+}

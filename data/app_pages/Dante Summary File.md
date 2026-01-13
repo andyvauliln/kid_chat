@@ -28,6 +28,11 @@
   - Very kind and simple person, love him as his own
   - Spends most time with Dante
   - Sleep with him in one room
+  - Studied Germany
+  - Reading Books
+  - Muslim
+  - 28 years (double check)
+  - Like nature and travel
 - **Extended Family:** 
   - Grandparents and relatives mostly in Belarus or Jakarta
   - Generally good roots but with family-specific characteristics
@@ -36,6 +41,7 @@
 - Papa and Mama maintain generally good connection despite living separately
 - Dante spends majority of time with Nanny (Hirja)
 - Primary residence structure supports shared custody arrangement
+- He has his own cat and live with a old dog and cat as well. 
 
 ---
 

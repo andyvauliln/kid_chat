@@ -6,7 +6,7 @@ import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
@@ -46,6 +46,8 @@ DEFAULT_MODELS = [
 ]
 
 ROUTER_PROMPT_PATH = Path(__file__).parent.parent.parent / "prompts" / "message_router.md"
+LLM_LOG_PATH = Path(__file__).parent.parent.parent / "data" / "llm_logs.jsonl"
+DAILY_REPORTS_DIR = Path(__file__).parent.parent.parent / "data" / "daily_reports"
 
 
 def get_model_config(model_id: str) -> ModelConfig | None:
@@ -71,6 +73,79 @@ def _load_router_prompt() -> str:
     text = ROUTER_PROMPT_PATH.read_text(encoding="utf-8")
     today = date.today().isoformat()
     return text.replace("YYYY-MM-DD", today)
+
+
+def _safe_llm_log_input(user_content: list | str) -> object:
+    if isinstance(user_content, str):
+        return user_content
+    safe: list[dict[str, Any]] = []
+    for part in user_content:
+        if isinstance(part, dict) and part.get("type") == "input_audio":
+            safe.append(
+                {
+                    "type": "input_audio",
+                    "input_audio": {
+                        "format": part.get("input_audio", {}).get("format"),
+                        "data": "<omitted>",
+                    },
+                }
+            )
+        else:
+            safe.append(part)
+    return safe
+
+
+def _append_llm_log(
+    *,
+    model: str,
+    input_data: object,
+    output_data: object,
+    cost: float,
+    context_files: list[str] | None,
+) -> None:
+    try:
+        LLM_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "datetime": datetime.now(timezone.utc).isoformat(),
+            "input": input_data,
+            "output": output_data,
+            "cost": cost,
+            "llm": model,
+            "context_files": context_files or [],
+        }
+        with LLM_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        # Best-effort logging (never break routing).
+        return
+
+
+def _append_daily_report_line(report_date: date, line: str) -> None:
+    DAILY_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    report_path = DAILY_REPORTS_DIR / f"{report_date.isoformat()}.md"
+    with report_path.open("a", encoding="utf-8") as f:
+        f.write(line.rstrip() + "\n")
+
+
+def _context_prompt() -> str:
+    return (
+        "You are an assistant. Answer the user's question using ONLY the provided context files.\n"
+        "If the context is missing info, say what is missing and give the best practical suggestion.\n"
+        "Output JSON only (no markdown): {\"response\": \"...\"}.\n"
+    )
+
+
+def _read_context_files(context_files: list[str]) -> str:
+    root = Path(__file__).parent.parent.parent
+    parts: list[str] = []
+    for rel in context_files:
+        path = root / rel
+        try:
+            content = path.read_text(encoding="utf-8")
+        except Exception as e:
+            content = f"(failed to read: {e})"
+        parts.append(f"### {rel}\n{content}\n")
+    return "\n".join(parts)
 
 
 def _telegram_ogg_opus_to_wav_bytes(ogg_opus: bytes) -> bytes:
@@ -222,6 +297,14 @@ async def route_message(
         try:
             response = await _call_model(m, api_key, prompt, user_content)
             parsed = json.loads(response.content)
+
+            _append_llm_log(
+                model=response.model,
+                input_data=input_data,
+                output_data=parsed,
+                cost=response.cost,
+                context_files=[],
+            )
             
             return RouterResult(
                 output=parsed,
@@ -277,11 +360,48 @@ async def handle_telegram_message(
     
     # Text message - use route_message directly
     if text:
-        return await route_message(
+        result = await route_message(
             {"username": username, "message_raw": text},
             model=model,
             api_key=api_key,
         )
+        out = result.output or {}
+        message_en = out.get("message_en")
+        if message_en:
+            _append_daily_report_line(date.today(), f"[{username}] {message_en}")
+
+        if out.get("needs_context") and out.get("context_files") and out.get("question_for_next_llm"):
+            ctx = _read_context_files(list(out["context_files"]))
+            user_payload = {
+                "message_en": out.get("message_en"),
+                "question": out.get("question_for_next_llm"),
+                "context_files": out.get("context_files"),
+                "context": ctx,
+            }
+            response2 = await _call_model(
+                model=result.model or (model or DEFAULT_MODELS[0]),
+                api_key=api_key,
+                system=_context_prompt(),
+                user_content=json.dumps(user_payload, ensure_ascii=False),
+            )
+            parsed2 = json.loads(response2.content)
+            out["response"] = parsed2.get("response")
+            result.output = out
+            result.input_tokens += response2.input_tokens
+            result.output_tokens += response2.output_tokens
+            result.cost += response2.cost
+
+            _append_llm_log(
+                model=response2.model,
+                input_data=user_payload,
+                output_data=parsed2,
+                cost=response2.cost,
+                context_files=list(out["context_files"]),
+            )
+
+        if out.get("response"):
+            _append_daily_report_line(date.today(), f"[AI] {out.get('response')}")
+        return result
     
     # Voice message - need to download and convert
     if voice:
@@ -315,6 +435,54 @@ async def handle_telegram_message(
             try:
                 response = await _call_model(m, api_key, prompt, user_content)
                 parsed = json.loads(response.content)
+
+                _append_llm_log(
+                    model=response.model,
+                    input_data={"username": username, "voice": {"file_id": file_id}},
+                    output_data=parsed,
+                    cost=response.cost,
+                    context_files=[],
+                )
+
+                message_en = parsed.get("message_en")
+                if message_en:
+                    _append_daily_report_line(date.today(), f"[{username}] {message_en}")
+
+                if parsed.get("needs_context") and parsed.get("context_files") and parsed.get("question_for_next_llm"):
+                    ctx = _read_context_files(list(parsed["context_files"]))
+                    user_payload = {
+                        "message_en": parsed.get("message_en"),
+                        "question": parsed.get("question_for_next_llm"),
+                        "context_files": parsed.get("context_files"),
+                        "context": ctx,
+                    }
+                    response2 = await _call_model(
+                        model=response.model,
+                        api_key=api_key,
+                        system=_context_prompt(),
+                        user_content=json.dumps(user_payload, ensure_ascii=False),
+                    )
+                    parsed2 = json.loads(response2.content)
+                    parsed["response"] = parsed2.get("response")
+
+                    _append_llm_log(
+                        model=response2.model,
+                        input_data=user_payload,
+                        output_data=parsed2,
+                        cost=response2.cost,
+                        context_files=list(parsed["context_files"]),
+                    )
+
+                    return RouterResult(
+                        output=parsed,
+                        model=response2.model,
+                        input_tokens=response.input_tokens + response2.input_tokens,
+                        output_tokens=response.output_tokens + response2.output_tokens,
+                        cost=response.cost + response2.cost,
+                    )
+
+                if parsed.get("response"):
+                    _append_daily_report_line(date.today(), f"[AI] {parsed.get('response')}")
                 
                 return RouterResult(
                     output=parsed,
@@ -343,12 +511,10 @@ async def handle_telegram_message(
         output={
             "message_en": "(unsupported message type)",
             "username": username,
-            "intent": "other",
             "needs_context": False,
             "context_files": [],
             "question_for_next_llm": None,
             "response": None,
-            "file_updates": [],
         },
         model="",
         input_tokens=0,

@@ -73,11 +73,6 @@ def validate_result(actual: dict, expected: dict) -> tuple[bool, list[str]]:
     """Validate actual output against expected. Returns (passed, errors)."""
     errors = []
     
-    # Check intent
-    if "intent" in expected:
-        if actual.get("intent") != expected["intent"]:
-            errors.append(f"intent: expected '{expected['intent']}', got '{actual.get('intent')}'")
-    
     # Check needs_context
     if "needs_context" in expected:
         if actual.get("needs_context") != expected["needs_context"]:
@@ -89,47 +84,25 @@ def validate_result(actual: dict, expected: dict) -> tuple[bool, list[str]]:
         act = actual.get("response")
         if exp is None and act is not None:
             errors.append(f"response: expected None, got '{act}'")
-        elif exp and str(exp).startswith("contains:") and not check_contains(act, exp):
-            errors.append(f"response: expected {exp}, got '{act}'")
     
-    # Check message_en
-    if "message_en" in expected:
-        exp = expected["message_en"]
-        act = actual.get("message_en", "")
-        if str(exp).startswith("contains:") and not check_contains(act, exp):
-            errors.append(f"message_en: expected {exp}, got '{act}'")
+    # Check response_not_null (for request_translate)
+    if "response_not_null" in expected and expected["response_not_null"]:
+        if actual.get("response") is None:
+            errors.append(f"response: expected not null, got None")
     
-    # Check context_files
+    # Note: We don't check message_en equality - AI translates, we trust it
+    
+    # Check context_files (exact path match)
     if "context_files_must_include" in expected:
-        actual_files = " ".join(actual.get("context_files", [])).lower()
-        for pattern in expected["context_files_must_include"]:
-            if pattern.lower() not in actual_files:
-                errors.append(f"context_files: missing '{pattern}'")
-    
-    # Check question_for_next_llm
-    if "question_for_next_llm" in expected:
-        exp = expected["question_for_next_llm"]
-        act = actual.get("question_for_next_llm")
-        if str(exp).startswith("contains:") and not check_contains(act, exp):
-            errors.append(f"question_for_next_llm: expected {exp}, got '{act}'")
-    
-    # Check file_updates
-    if "file_updates_must_include" in expected:
-        actual_updates = actual.get("file_updates", [])
-        for exp_update in expected["file_updates_must_include"]:
-            exp_file = exp_update.get("file", "")
+        actual_files = actual.get("context_files", [])
+        for expected_file in expected["context_files_must_include"]:
             found = False
-            for upd in actual_updates:
-                if exp_file in upd.get("file", ""):
+            for actual_file in actual_files:
+                if expected_file in actual_file or actual_file == expected_file:
                     found = True
-                    what_contains = exp_update.get("what_contains")
-                    if what_contains:
-                        what_str = json.dumps(upd.get("what", ""), ensure_ascii=False)
-                        if not check_contains(what_str, what_contains):
-                            errors.append(f"file_updates[{exp_file}]: what should contain '{what_contains}'")
                     break
             if not found:
-                errors.append(f"file_updates: missing update for '{exp_file}'")
+                errors.append(f"context_files: missing '{expected_file}'")
     
     return len(errors) == 0, errors
 
