@@ -131,6 +131,11 @@ def _append_daily_report_line(report_date: date, line: str) -> None:
         f.write(line.rstrip() + "\n")
 
 
+def _model_tag(model_id: str | None) -> str:
+    m = (model_id or "").strip()
+    return m if m else "unknown"
+
+
 def _context_prompt() -> str:
     return (
         "You are an assistant. Answer the user's question using ONLY the provided context files.\n"
@@ -361,6 +366,7 @@ async def handle_telegram_message(
     # Extract message content
     text = telegram_message.get("text")
     voice = telegram_message.get("voice")
+    answer_model: str | None = None
     
     # Text message - use route_message directly
     if text:
@@ -370,6 +376,7 @@ async def handle_telegram_message(
             api_key=api_key,
         )
         out = result.output or {}
+        out["llm_model"] = result.model
         message_en = out.get("message_en")
         if message_en:
             _append_daily_report_line(date.today(), f"[{username}] {message_en}")
@@ -388,8 +395,10 @@ async def handle_telegram_message(
                 system=_context_prompt(),
                 user_content=json.dumps(user_payload, ensure_ascii=False),
             )
+            answer_model = response2.model
             parsed2 = json.loads(response2.content)
             out["response"] = parsed2.get("response")
+            out["llm_model_context"] = response2.model
             result.output = out
             result.input_tokens += response2.input_tokens
             result.output_tokens += response2.output_tokens
@@ -404,7 +413,10 @@ async def handle_telegram_message(
             )
 
         if out.get("response"):
-            _append_daily_report_line(date.today(), f"[AI] {out.get('response')}")
+            _append_daily_report_line(
+                date.today(),
+                f"[AI|{_model_tag(answer_model or result.model)}] {out.get('response')}",
+            )
         return result
     
     # Voice message - need to download and convert
@@ -448,6 +460,7 @@ async def handle_telegram_message(
                     context_files=[],
                 )
 
+                parsed["llm_model"] = response.model
                 message_en = parsed.get("message_en")
                 if message_en:
                     _append_daily_report_line(date.today(), f"[{username}] {message_en}")
@@ -466,8 +479,10 @@ async def handle_telegram_message(
                         system=_context_prompt(),
                         user_content=json.dumps(user_payload, ensure_ascii=False),
                     )
+                    answer_model = response2.model
                     parsed2 = json.loads(response2.content)
                     parsed["response"] = parsed2.get("response")
+                    parsed["llm_model_context"] = response2.model
 
                     _append_llm_log(
                         model=response2.model,
@@ -486,7 +501,10 @@ async def handle_telegram_message(
                     )
 
                 if parsed.get("response"):
-                    _append_daily_report_line(date.today(), f"[AI] {parsed.get('response')}")
+                    _append_daily_report_line(
+                        date.today(),
+                        f"[AI|{_model_tag(answer_model or response.model)}] {parsed.get('response')}",
+                    )
                 
                 return RouterResult(
                     output=parsed,

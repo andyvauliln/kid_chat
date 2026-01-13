@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import difflib
 import json
 import os
@@ -101,6 +102,32 @@ def _daily_messages_path(d: date) -> Path:
 
 def _daily_summary_path(d: date) -> Path:
     return DAILY_REPORTS_DIR / f"{d.isoformat()}.summary.md"
+
+
+def _model_slug(model_id: str) -> str:
+    # Safe for filenames
+    s = (model_id or "").strip()
+    if not s:
+        return "unknown"
+    out: list[str] = []
+    for ch in s:
+        if ch.isalnum() or ch in {".", "-", "_"}:
+            out.append(ch)
+        else:
+            out.append("_")
+    return "".join(out)
+
+
+def _daily_summary_path_with_model(d: date, model_id: str) -> Path:
+    return DAILY_REPORTS_DIR / f"{d.isoformat()}.summary.{_model_slug(model_id)}.md"
+
+
+def _daily_updates_path(d: date) -> Path:
+    return DAILY_REPORTS_DIR / f"{d.isoformat()}.updates.json"
+
+
+def _daily_updates_path_with_model(d: date, model_id: str) -> Path:
+    return DAILY_REPORTS_DIR / f"{d.isoformat()}.updates.{_model_slug(model_id)}.json"
 
 
 def _collect_context_files() -> list[str]:
@@ -257,6 +284,115 @@ def _json_pretty(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=2)
 
 
+def _flatten_value_changes(before: Any, after: Any, *, prefix: str = "") -> dict[str, Any]:
+    """
+    Return mapping of changed property paths -> new value.
+    - For dicts: recurse into keys.
+    - For lists/other: treat as atomic; if changed, record whole new value.
+    """
+    if before == after:
+        return {}
+
+    if isinstance(before, dict) and isinstance(after, dict):
+        out: dict[str, Any] = {}
+        keys = set(before.keys()) | set(after.keys())
+        for k in sorted(keys):
+            p = f"{prefix}.{k}" if prefix else str(k)
+            b = before.get(k)
+            a = after.get(k)
+            if isinstance(b, dict) and isinstance(a, dict):
+                out.update(_flatten_value_changes(b, a, prefix=p))
+            else:
+                if b != a:
+                    out[p] = a
+        return out
+
+    # Lists (or any other type) are treated as a whole value
+    return {prefix or "value": after}
+
+
+def _extract_ids_from_change(ch: FileChange) -> list[Any]:
+    data = ch.data
+    if ch.type in {"added", "updated"}:
+        if isinstance(data, dict) and "id" in data:
+            return [data["id"]]
+        if isinstance(data, list):
+            ids: list[Any] = []
+            for item in data:
+                if isinstance(item, dict) and "id" in item:
+                    ids.append(item["id"])
+            return ids
+        return []
+
+    if ch.type == "removed":
+        if isinstance(data, dict) and "ids" in data and isinstance(data["ids"], list):
+            return list(data["ids"])
+        if isinstance(data, dict) and "id" in data:
+            return [data["id"]]
+        if isinstance(data, list):
+            return list(data)
+        return [data]
+
+    return []
+
+
+def _index_items_by_id(obj: Any) -> dict[Any, Any]:
+    _, target_list = _find_target_list(obj)
+    out: dict[Any, Any] = {}
+    for item in target_list:
+        if isinstance(item, dict) and "id" in item:
+            out[item["id"]] = item
+    return out
+
+
+def _flatten_dict_to_path_values(obj: Any, *, prefix: str = "") -> dict[str, Any]:
+    if not isinstance(obj, dict):
+        return {prefix or "value": obj}
+    out: dict[str, Any] = {}
+    for k in sorted(obj.keys()):
+        p = f"{prefix}.{k}" if prefix else str(k)
+        v = obj[k]
+        if isinstance(v, dict):
+            out.update(_flatten_dict_to_path_values(v, prefix=p))
+        else:
+            out[p] = v
+    return out
+
+
+def _json_items_from_llm_changes(changes: list[FileChange]) -> list[dict[str, Any]]:
+    """
+    Convert LLM `changes` to the compact format requested:
+      {"id": <id>, "changes": [{"path": value}, ...]}
+    We use the LLM-provided payload (not computed before/after) so even re-runs
+    still show the intended update fields.
+    """
+    by_id: dict[Any, dict[str, Any]] = {}
+
+    for ch in changes:
+        ids = _extract_ids_from_change(ch)
+        if ch.type == "removed":
+            for item_id in ids:
+                by_id.setdefault(item_id, {})["__deleted__"] = True
+            continue
+
+        data = ch.data
+        items = data if isinstance(data, list) else [data]
+        for item in items:
+            if not isinstance(item, dict) or "id" not in item:
+                continue
+            item_id = item["id"]
+            payload = dict(item)
+            payload.pop("id", None)
+            flat = _flatten_dict_to_path_values(payload, prefix="")
+            target = by_id.setdefault(item_id, {})
+            target.update(flat)
+
+    out: list[dict[str, Any]] = []
+    for item_id, flat_changes in by_id.items():
+        out.append({"id": item_id, "changes": [{k: v} for k, v in flat_changes.items()]})
+    return out
+
+
 def _unified_diff(before: str, after: str, *, rel_path: str) -> str:
     before_lines = before.splitlines(keepends=True)
     after_lines = after.splitlines(keepends=True)
@@ -269,39 +405,37 @@ def _unified_diff(before: str, after: str, *, rel_path: str) -> str:
     return "".join(diff).rstrip()
 
 
-def _update_details_md(upd: FileUpdate, *, applied_summary: str, extra_blocks: list[str]) -> str:
-    reasoning = (upd.reasoning or "").strip() or "(missing)"
-    fields = upd.updated_fields or []
-    fields_md = "\n".join(f"- `{f}`" for f in fields) if fields else "- (missing)"
-
-    blocks = "\n\n".join(extra_blocks).strip()
-    blocks_md = f"\n\n{blocks}\n" if blocks else "\n"
-
-    return (
-        f"### {upd.file}\n\n"
-        f"**Applied**: {applied_summary}\n\n"
-        f"**LLM reasoning**\n{reasoning}\n\n"
-        f"**Fields updated (returned by LLM)**\n{fields_md}"
-        f"{blocks_md}"
-    ).rstrip()
+def _write_daily_summary(d: date, *, summary_md: str, model_id: str) -> str:
+    text = f"## Summary\n{summary_md.strip()}\n"
+    _write_text(_daily_summary_path(d), text)
+    _write_text(_daily_summary_path_with_model(d, model_id), text)
+    return text
 
 
-def _append_daily_sections(d: date, summary_md: str, updates_log: list[str], updates_details: list[str]) -> str:
-    report_path = _daily_summary_path(d)
-    existing = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
-    details = "\n\n".join(updates_details).strip()
-    suffix = (
-        "## Summary\n"
-        f"{summary_md.strip()}\n"
-        "\n## Updates Applied\n"
-        + "\n".join(f"- {x}" for x in updates_log)
-        + "\n"
-        + "\n## Updates Details (LLM)\n"
-        + (details + "\n" if details else "(none)\n")
-    )
-    new_text = (existing.rstrip() + "\n\n" + suffix).lstrip() if existing.strip() else suffix
-    _write_text(report_path, new_text)
-    return new_text
+def _write_daily_updates_log(
+    d: date,
+    *,
+    model_id: str,
+    cost: float,
+    update_entries: list[dict[str, Any]],
+) -> None:
+    # Schema requested by user:
+    # [
+    #   {
+    #     "file": "",
+    #     "date": "",
+    #     "model": "",
+    #     "cost": "",
+    #     "type": "day.summary/week.summary/month.summary",
+    #     "changes": {
+    #       "type": "updated/deleted/created",
+    #       "data": "...",
+    #       "reasoning": "..."
+    #     }
+    #   }
+    # ]
+    _write_json(_daily_updates_path(d), update_entries)
+    _write_json(_daily_updates_path_with_model(d, model_id), update_entries)
 
 
 async def run_daily_report(d: date, model: str | None = None, api_key: str | None = None) -> dict[str, Any]:
@@ -331,10 +465,11 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
 
     updates = _parse_updates(parsed)
     updates_log: list[str] = []
-    updates_details: list[str] = []
+    update_entries: list[dict[str, Any]] = []
 
     for upd in updates:
         abs_path = REPO_ROOT / upd.file
+        existed_before = abs_path.exists()
         if upd.format == "md":
             full_doc = None
             for c in upd.changes:
@@ -347,12 +482,25 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
             _write_text(abs_path, full_doc)
             updates_log.append(f"{upd.file}: updated (md full_document)")
             diff_text = _unified_diff(before, full_doc, rel_path=upd.file)
-            extra = [f"```diff\n{diff_text}\n```"] if diff_text else ["```diff\n(no diff)\n```"]
-            updates_details.append(_update_details_md(upd, applied_summary="updated (md full_document)", extra_blocks=extra))
+            update_entries.append(
+                {
+                    "file": upd.file,
+                    "date": d.isoformat(),
+                    "model": response.model,
+                    "cost": response.cost,
+                    "type": "day.summary",
+                    "changes": {
+                        "type": "created" if not existed_before else "updated",
+                        "data": {"diff": diff_text or "(no diff)", "updated_fields": upd.updated_fields or []},
+                        "reasoning": (upd.reasoning or "").strip() or "(missing)",
+                    },
+                }
+            )
             continue
 
         if upd.format == "json":
             current = _read_json(abs_path) if abs_path.exists() else []
+            before_obj = copy.deepcopy(current)
             updated_obj, applied = apply_json_changes(
                 current=current,
                 changes=upd.changes,
@@ -360,18 +508,33 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
             _write_json(abs_path, updated_obj)
             applied_summary = f"updated (json {', '.join(applied) if applied else 'no-op'})"
             updates_log.append(f"{upd.file}: {applied_summary}")
-            extra_blocks: list[str] = []
-            for ch in upd.changes:
-                if ch.data is None:
-                    continue
-                extra_blocks.append(f"**{ch.type}**\n```json\n{_json_pretty(ch.data)}\n```")
-            updates_details.append(_update_details_md(upd, applied_summary=applied_summary, extra_blocks=extra_blocks))
+            _ = before_obj  # kept for potential future diffing
+            _ = updated_obj
+            id_changes = _json_items_from_llm_changes(upd.changes)
+            update_entries.append(
+                {
+                    "file": upd.file,
+                    "date": d.isoformat(),
+                    "model": response.model,
+                    "cost": response.cost,
+                    "type": "day.summary",
+                    "changes": {
+                        "type": "created" if not existed_before else "updated",
+                        "data": {
+                            "applied": applied,
+                            "items": id_changes,
+                        },
+                        "reasoning": (upd.reasoning or "").strip() or "(missing)",
+                    },
+                }
+            )
             continue
 
         raise ValueError(f"Unknown format: {upd.format} for {upd.file}")
 
     summary_md = str(parsed.get("summary") or "").strip() or "(no summary)"
-    report_text = _append_daily_sections(d, summary_md=summary_md, updates_log=updates_log, updates_details=updates_details)
+    report_text = _write_daily_summary(d, summary_md=summary_md, model_id=response.model)
+    _write_daily_updates_log(d, model_id=response.model, cost=response.cost, update_entries=update_entries)
 
     return {
         "date": d.isoformat(),
@@ -380,6 +543,9 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
         "updates_applied": updates_log,
         "daily_messages_path": str(_daily_messages_path(d).relative_to(REPO_ROOT)),
         "daily_summary_path": str(_daily_summary_path(d).relative_to(REPO_ROOT)),
+        "daily_summary_path_with_model": str(_daily_summary_path_with_model(d, response.model).relative_to(REPO_ROOT)),
+        "daily_updates_path": str(_daily_updates_path(d).relative_to(REPO_ROOT)),
+        "daily_updates_path_with_model": str(_daily_updates_path_with_model(d, response.model).relative_to(REPO_ROOT)),
         "daily_summary_text": report_text,
     }
 

@@ -40,9 +40,11 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
     try:
         result = await handle_telegram_message(update.message.to_dict())
-        username = str(result.get("username") or "").strip()
-        message_en = str(result.get("message_en") or "").strip()
-        msg_type = str(result.get("type") or "other").strip()
+        out = result.output or {}
+        username = str(out.get("username") or "").strip()
+        message_en = str(out.get("message_en") or "").strip()
+        msg_type = str(out.get("type") or "other").strip()
+        model_id = str(result.model or "").strip() or "unknown"
 
         user_id = None
         if update.effective_user:
@@ -60,10 +62,11 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         else:
             name_part = f"<b>{username_html}</b>"
 
-        formatted = f"{name_part}: {message_html} [{type_html}]"
+        model_html = html.escape(model_id)
+        formatted = f"{name_part}: {message_html} [{type_html} | {model_html}]"
 
         # Print only final output
-        print(f"{username}: {message_en} [{msg_type}]")
+        print(f"{username}: {message_en} [{msg_type} | {model_id}]")
 
         # Delete original message (requires permissions in groups)
         try:
