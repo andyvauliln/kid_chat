@@ -89,8 +89,12 @@ def _write_json(path: Path, obj: Any) -> None:
     path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def _daily_report_path(d: date) -> Path:
-    return DAILY_REPORTS_DIR / f"{d.isoformat()}.md"
+def _daily_messages_path(d: date) -> Path:
+    return DAILY_REPORTS_DIR / f"{d.isoformat()}.messages.md"
+
+
+def _daily_summary_path(d: date) -> Path:
+    return DAILY_REPORTS_DIR / f"{d.isoformat()}.summary.md"
 
 
 def _collect_context_files() -> list[str]:
@@ -103,8 +107,8 @@ def _collect_context_files() -> list[str]:
 
 
 def _build_context_payload(d: date) -> dict[str, Any]:
-    report_path = _daily_report_path(d)
-    report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
+    messages_path = _daily_messages_path(d)
+    report_text = messages_path.read_text(encoding="utf-8") if messages_path.exists() else ""
 
     context_files = _collect_context_files()
     context_chunks: list[str] = []
@@ -236,16 +240,16 @@ def apply_json_changes(current: Any, changes: list[FileChange]) -> tuple[Any, li
 
 
 def _append_daily_sections(d: date, summary_md: str, updates_log: list[str]) -> str:
-    report_path = _daily_report_path(d)
+    report_path = _daily_summary_path(d)
     existing = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
     suffix = (
-        "\n\n## Summary\n"
+        "## Summary\n"
         f"{summary_md.strip()}\n"
         "\n## Updates Applied\n"
         + "\n".join(f"- {x}" for x in updates_log)
         + "\n"
     )
-    new_text = (existing.rstrip() + suffix).lstrip()
+    new_text = (existing.rstrip() + "\n\n" + suffix).lstrip() if existing.strip() else suffix
     _write_text(report_path, new_text)
     return new_text
 
@@ -312,8 +316,9 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
         "summary": summary_md,
         "updates": parsed.get("updates") or [],
         "updates_applied": updates_log,
-        "daily_report_path": str(_daily_report_path(d).relative_to(REPO_ROOT)),
-        "daily_report_text": report_text,
+        "daily_messages_path": str(_daily_messages_path(d).relative_to(REPO_ROOT)),
+        "daily_summary_path": str(_daily_summary_path(d).relative_to(REPO_ROOT)),
+        "daily_summary_text": report_text,
     }
 
 

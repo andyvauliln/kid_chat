@@ -120,9 +120,13 @@ def _append_llm_log(
         return
 
 
+def _daily_messages_path(report_date: date) -> Path:
+    return DAILY_REPORTS_DIR / f"{report_date.isoformat()}.messages.md"
+
+
 def _append_daily_report_line(report_date: date, line: str) -> None:
     DAILY_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    report_path = DAILY_REPORTS_DIR / f"{report_date.isoformat()}.md"
+    report_path = _daily_messages_path(report_date)
     with report_path.open("a", encoding="utf-8") as f:
         f.write(line.rstrip() + "\n")
 
