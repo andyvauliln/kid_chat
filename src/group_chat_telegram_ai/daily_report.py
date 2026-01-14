@@ -293,6 +293,103 @@ def _split_paragraphs(text: str) -> list[str]:
     return [p for p in parts if p]
 
 
+def _extract_md_snippets(full_doc: str, updated_fields: list[str] | None) -> list[str]:
+    """
+    Best-effort extraction of "what changed" snippets for markdown when a re-run
+    produces no textual diff (because the file already contains the content).
+
+    Returns a list of short snippets (paragraph-ish strings).
+    """
+    fields = [f.strip() for f in (updated_fields or []) if str(f).strip()]
+    if not fields:
+        return []
+
+    lines = full_doc.splitlines()
+
+    snippets: list[str] = []
+    seen: set[str] = set()
+
+    # 1) Try to capture heading blocks for any heading-like field.
+    for field in fields:
+        # Find a line that contains the field (case-insensitive).
+        idx = None
+        field_l = field.lower()
+        for i, line in enumerate(lines):
+            if field_l in line.lower():
+                idx = i
+                break
+        if idx is None:
+            continue
+
+        # If it's a heading line, capture until next heading of same/higher level.
+        line = lines[idx]
+        if line.lstrip().startswith("#"):
+            level = len(line) - len(line.lstrip("#"))
+            buf = [line.rstrip()]
+            for j in range(idx + 1, len(lines)):
+                nxt = lines[j]
+                if nxt.lstrip().startswith("#"):
+                    nxt_level = len(nxt) - len(nxt.lstrip("#"))
+                    if nxt_level <= level:
+                        break
+                buf.append(nxt.rstrip())
+            block = "\n".join(buf).strip()
+            if block and block not in seen:
+                seen.add(block)
+                snippets.append(block)
+            continue
+
+        # Otherwise capture the matching line + a few neighbors (useful for bullets).
+        start = max(0, idx - 2)
+        end = min(len(lines), idx + 4)
+        block = "\n".join(x.rstrip() for x in lines[start:end]).strip()
+        if block and block not in seen:
+            seen.add(block)
+            snippets.append(block)
+
+    # 2) As a fallback, return any paragraphs that mention any field.
+    if not snippets:
+        paras = _split_paragraphs(full_doc)
+        for p in paras:
+            pl = p.lower()
+            if any(f.lower() in pl for f in fields):
+                if p not in seen:
+                    seen.add(p)
+                    snippets.append(p)
+
+    return snippets[:10]
+
+
+def _extract_md_snippets_from_reasoning(full_doc: str, reasoning: str | None) -> list[str]:
+    """
+    Fallback: pick paragraph(s) from full_doc that best match the reasoning text.
+    """
+    r = (reasoning or "").strip().lower()
+    if not r:
+        return []
+    words = [w for w in re.findall(r"[a-z0-9]+", r) if len(w) >= 4]
+    if not words:
+        return []
+    keywords: list[str] = []
+    seen: set[str] = set()
+    for w in words:
+        if w in seen:
+            continue
+        seen.add(w)
+        keywords.append(w)
+        if len(keywords) >= 12:
+            break
+
+    paras = _split_paragraphs(full_doc)
+    scored: list[tuple[int, str]] = []
+    for p in paras:
+        pl = p.lower()
+        score = sum(1 for k in keywords if k in pl)
+        if score:
+            scored.append((score, p))
+    scored.sort(key=lambda x: (-x[0], len(x[1])))
+    return [p for _, p in scored[:5]]
+
 def _md_change_paragraphs(before: str, after: str) -> dict[str, list[str]]:
     """
     Returns paragraphs changed, grouped by:
@@ -496,7 +593,6 @@ def _json_items_from_llm_changes_compact(changes: list[FileChange]) -> list[dict
 
 def _write_daily_summary(d: date, *, summary_md: str, model_id: str) -> str:
     text = f"## Summary\n{summary_md.strip()}\n"
-    _write_text(_daily_summary_path(d), text)
     _write_text(_daily_summary_path_with_model(d, model_id), text)
     return text
 
@@ -504,9 +600,9 @@ def _write_daily_summary(d: date, *, summary_md: str, model_id: str) -> str:
 def _write_daily_updates_log(
     d: date,
     *,
-    model_id: str,
     cost: float,
     update_entries: list[dict[str, Any]],
+    model_id: str,
 ) -> None:
     # Schema requested by user:
     # [
@@ -523,7 +619,6 @@ def _write_daily_updates_log(
     #     }
     #   }
     # ]
-    _write_json(_daily_updates_path(d), update_entries)
     _write_json(_daily_updates_path_with_model(d, model_id), update_entries)
 
 
@@ -569,6 +664,16 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
             before = _read_text(abs_path) if abs_path.exists() else ""
             _write_text(abs_path, full_doc)
             para_changes = _md_change_paragraphs(before, full_doc)
+
+            # If this is a re-run and there is no textual diff, still record the
+            # relevant updated snippet(s) from the LLM output.
+            if not para_changes["added"] and not para_changes["updated"] and not para_changes["deleted"]:
+                fallback = _extract_md_snippets(full_doc, upd.updated_fields)
+                if not fallback:
+                    fallback = _extract_md_snippets_from_reasoning(full_doc, upd.reasoning)
+                if fallback:
+                    para_changes["updated"] = fallback
+
             md_changes_arr: list[dict[str, Any]] = []
             for t in ("added", "updated", "deleted"):
                 if para_changes[t]:
@@ -647,17 +752,15 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
 
     summary_md = str(parsed.get("summary") or "").strip() or "(no summary)"
     report_text = _write_daily_summary(d, summary_md=summary_md, model_id=response.model)
-    _write_daily_updates_log(d, model_id=response.model, cost=response.cost, update_entries=update_entries)
+    _write_daily_updates_log(d, cost=response.cost, update_entries=update_entries, model_id=response.model)
 
     return {
         "date": d.isoformat(),
         "summary": summary_md,
         "updates": parsed.get("updates") or [],
         "daily_messages_path": str(_daily_messages_path(d).relative_to(REPO_ROOT)),
-        "daily_summary_path": str(_daily_summary_path(d).relative_to(REPO_ROOT)),
-        "daily_summary_path_with_model": str(_daily_summary_path_with_model(d, response.model).relative_to(REPO_ROOT)),
-        "daily_updates_path": str(_daily_updates_path(d).relative_to(REPO_ROOT)),
-        "daily_updates_path_with_model": str(_daily_updates_path_with_model(d, response.model).relative_to(REPO_ROOT)),
+        "daily_summary_path": str(_daily_summary_path_with_model(d, response.model).relative_to(REPO_ROOT)),
+        "daily_updates_path": str(_daily_updates_path_with_model(d, response.model).relative_to(REPO_ROOT)),
         "daily_summary_text": report_text,
     }
 
