@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import difflib
 import json
 import os
@@ -11,13 +10,29 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from .handle_message import DEFAULT_MODELS, _append_llm_log, _call_model
+from .handle_message import (
+    DEFAULT_MODELS,
+    _append_llm_log,
+    _call_model,
+    get_default_model_from_env,
+    send_telegram_long_text,
+)
 
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-DAILY_REPORTS_DIR = REPO_ROOT / "data" / "daily_reports"
+DAILY_REPORTS_DIR = REPO_ROOT / "reports"
 APP_PAGES_DIR = REPO_ROOT / "data" / "app_pages"
 APP_JSON_DIR = REPO_ROOT / "data" / "app_json"
+PROMPTS_DIR = REPO_ROOT / "prompts"
+DAILY_REPORT_PROMPT_PATH = PROMPTS_DIR / "daily_report.md"
+DAILY_REPORT_STAGE1_PROMPT_PATH = PROMPTS_DIR / "daily_report_stage1_plan.md"
+DAILY_REPORT_UPDATES_CONTEXT_PROMPT_PATH = PROMPTS_DIR / "daily_report_updates_context.md"
+UPDATE_MD_APP_PAGE_PROMPT_PATH = PROMPTS_DIR / "update_md_app_page.md"
+UPDATE_JSON_APP_DATA_PROMPT_PATH = PROMPTS_DIR / "update_json_app_data.md"
+UPDATE_EDUCATION_MD_PROMPT_PATH = PROMPTS_DIR / "update__data_app_pages__Education.md"
+UPDATE_DANTE_TOPICS_JSON_PROMPT_PATH = PROMPTS_DIR / "update__data_app_json__dante_topics_to_discuss.json.md"
+UPDATE_TODO_LIST_JSON_PROMPT_PATH = PROMPTS_DIR / "update__data_app_json__todo_list.json.md"
+UPDATE_VIDEO_JSON_PROMPT_PATH = PROMPTS_DIR / "update__data_app_json__video.json.md"
 
 
 ChangeType = Literal["added", "removed", "updated"]
@@ -40,44 +55,37 @@ class FileUpdate:
     updated_fields: list[str] | None = None
 
 
-def _daily_prompt() -> str:
-    return (
-        "You are preparing a daily update run.\n"
-        "You will receive:\n"
-        "- the daily report messages for the day\n"
-        "- current contents of ALL app files (markdown + json)\n"
-        "\n"
-        "Your job:\n"
-        "- Produce a short day summary\n"
-        "- Decide what files should be updated based on the day's messages\n"
-        "- Output JSON only.\n"
-        "\n"
-        "Output schema:\n"
-        "{\n"
-        '  "summary": "markdown string",\n'
-        '  "updates": [\n'
-        "    {\n"
-        '      "file": "data/app_pages/Education.md",\n'
-        '      "format": "md|json",\n'
-        '      "reasoning": "why this file must be updated based on messages (string)",\n'
-        '      "updated_fields": ["field/path list (for md: section headings; for json: keys or dotted paths)"],\n'
-        '      "changes": [\n'
-        '        {"type": "added", "data": "..."} ,\n'
-        '        {"type": "removed", "data": "..."} ,\n'
-        '        {"type": "updated", "data": "...", "full_document": "FULL_FILE_CONTENT_FOR_MD"}\n'
-        "      ]\n"
-        "    }\n"
-        "  ]\n"
-        "}\n"
-        "\n"
-        "Rules:\n"
-        "- If daily_report_messages is empty, set summary to '(no messages)' and output updates=[].\n"
-        "- For format=md: include exactly one change with type=updated and a full_document.\n"
-        "- For format=json: do NOT include full_document. Use changes with type added/removed/updated and put the structured object(s) in `data`.\n"
-        "- Always include `reasoning` and `updated_fields` for every item in updates.\n"
-        "- `reasoning` must explicitly cite the message(s) that triggered the update (quote short fragments).\n"
-        "- Do not output updates for files that should not change.\n"
-    )
+PromptKey = Literal["md_page", "json_app"]
+
+
+@dataclass
+class UpdatePlanItem:
+    file: str
+    format: FileFormat
+    reasoning: str
+    updated_fields: list[str]
+    prompt_key: PromptKey
+
+
+def _load_daily_prompt() -> str:
+    return DAILY_REPORT_PROMPT_PATH.read_text(encoding="utf-8")
+
+
+def _load_prompt(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _load_updates_context_prompt() -> str:
+    return _load_prompt(DAILY_REPORT_UPDATES_CONTEXT_PROMPT_PATH)
+
+
+def _load_stage1_prompt() -> str:
+    return _load_prompt(DAILY_REPORT_STAGE1_PROMPT_PATH)
+
+
+def _build_stage1_system_prompt() -> str:
+    # Combine context-guidance + stage1 instructions.
+    return f"{_load_updates_context_prompt().rstrip()}\n\n{_load_stage1_prompt().rstrip()}\n"
 
 
 def _read_text(path: Path) -> str:
@@ -102,10 +110,6 @@ def _daily_messages_path(d: date) -> Path:
     return DAILY_REPORTS_DIR / f"{d.isoformat()}.messages.md"
 
 
-def _daily_summary_path(d: date) -> Path:
-    return DAILY_REPORTS_DIR / f"{d.isoformat()}.summary.md"
-
-
 def _model_slug(model_id: str) -> str:
     # Safe for filenames
     s = (model_id or "").strip()
@@ -124,10 +128,6 @@ def _daily_summary_path_with_model(d: date, model_id: str) -> Path:
     return DAILY_REPORTS_DIR / f"{d.isoformat()}.summary.{_model_slug(model_id)}.md"
 
 
-def _daily_updates_path(d: date) -> Path:
-    return DAILY_REPORTS_DIR / f"{d.isoformat()}.updates.json"
-
-
 def _daily_updates_path_with_model(d: date, model_id: str) -> Path:
     return DAILY_REPORTS_DIR / f"{d.isoformat()}.updates.{_model_slug(model_id)}.json"
 
@@ -139,6 +139,118 @@ def _collect_context_files() -> list[str]:
     for p in sorted(APP_JSON_DIR.glob("*.json")):
         files.append(str(p.relative_to(REPO_ROOT)))
     return files
+
+
+def _collect_prompt_files() -> list[str]:
+    files: list[str] = []
+    for p in sorted(PROMPTS_DIR.glob("*.md")):
+        files.append(str(p.relative_to(REPO_ROOT)))
+    return files
+
+
+def _summarize_md_structure(content: str) -> dict[str, Any]:
+    lines = content.splitlines()
+    headings: list[dict[str, Any]] = []
+    description = ""
+    for ln in lines:
+        s = ln.strip()
+        if not s:
+            continue
+        if s.startswith("#"):
+            level = len(s) - len(s.lstrip("#"))
+            title = s.lstrip("#").strip()
+            if title:
+                headings.append({"level": level, "title": title})
+            continue
+        if not description:
+            # First non-heading, non-empty line as a best-effort description.
+            description = s[:200]
+    return {
+        "type": "md",
+        "headings": headings[:80],
+        "description": description,
+    }
+
+
+def _summarize_json_structure(obj: Any) -> dict[str, Any]:
+    if isinstance(obj, list):
+        sample_keys: list[str] = []
+        for item in obj:
+            if isinstance(item, dict):
+                sample_keys = sorted(item.keys())
+                break
+        return {
+            "type": "json",
+            "shape": "list",
+            "sample_item_keys": sample_keys[:80],
+        }
+
+    if isinstance(obj, dict):
+        top_keys = sorted(obj.keys())
+        container_key = None
+        sample_keys: list[str] = []
+        for k in ("items", "topics"):
+            v = obj.get(k)
+            if isinstance(v, list):
+                container_key = k
+                for item in v:
+                    if isinstance(item, dict):
+                        sample_keys = sorted(item.keys())
+                        break
+                break
+        return {
+            "type": "json",
+            "shape": "dict",
+            "top_level_keys": top_keys[:200],
+            "list_container_key": container_key,
+            "sample_item_keys": sample_keys[:80],
+        }
+
+    return {"type": "json", "shape": type(obj).__name__}
+
+
+def _summarize_file_structure(rel_path: str) -> dict[str, Any]:
+    abs_path = REPO_ROOT / rel_path
+    try:
+        raw = abs_path.read_text(encoding="utf-8")
+    except Exception as e:
+        return {"error": f"failed to read: {e}"}
+
+    if rel_path.endswith(".md"):
+        return _summarize_md_structure(raw)
+
+    if rel_path.endswith(".json"):
+        try:
+            obj = json.loads(raw)
+        except Exception as e:
+            return {"type": "json", "error": f"failed to parse json: {e}"}
+        return _summarize_json_structure(obj)
+
+    return {"error": "unsupported file type"}
+
+
+def _build_updates_context() -> dict[str, Any]:
+    tracked_files = _collect_context_files()
+    prompt_files = _collect_prompt_files()
+    prompt_mapping = {
+        "stage1_plan": str(DAILY_REPORT_STAGE1_PROMPT_PATH.relative_to(REPO_ROOT)),
+        "updates_context": str(DAILY_REPORT_UPDATES_CONTEXT_PROMPT_PATH.relative_to(REPO_ROOT)),
+        "md_page": str(UPDATE_MD_APP_PAGE_PROMPT_PATH.relative_to(REPO_ROOT)),
+        "json_app": str(UPDATE_JSON_APP_DATA_PROMPT_PATH.relative_to(REPO_ROOT)),
+        "file_prompts": {
+            "data/app_pages/Education.md": str(UPDATE_EDUCATION_MD_PROMPT_PATH.relative_to(REPO_ROOT)),
+            "data/app_json/dante_topics_to_discuss.json": str(UPDATE_DANTE_TOPICS_JSON_PROMPT_PATH.relative_to(REPO_ROOT)),
+            "data/app_json/todo_list.json": str(UPDATE_TODO_LIST_JSON_PROMPT_PATH.relative_to(REPO_ROOT)),
+            "data/app_json/video.json": str(UPDATE_VIDEO_JSON_PROMPT_PATH.relative_to(REPO_ROOT)),
+        },
+    }
+    file_structures = {rel: _summarize_file_structure(rel) for rel in tracked_files}
+    return {
+        "tracked_files": tracked_files,
+        "prompts": prompt_files,
+        "prompt_mapping": prompt_mapping,
+        "file_structures": file_structures,
+    }
 
 
 def _build_context_payload(d: date) -> dict[str, Any]:
@@ -160,7 +272,69 @@ def _build_context_payload(d: date) -> dict[str, Any]:
         "daily_report_messages": report_text,
         "context_files": context_files,
         "context": "\n".join(context_chunks),
+        "updates_context": _build_updates_context(),
     }
+
+
+def _build_stage1_payload(d: date) -> dict[str, Any]:
+    messages_path = _daily_messages_path(d)
+    report_text = messages_path.read_text(encoding="utf-8") if messages_path.exists() else ""
+    return {
+        "date": d.isoformat(),
+        "daily_report_messages": report_text,
+        "updates_context": _build_updates_context(),
+    }
+
+
+def _validate_stage1_payload(payload: Any, *, tracked_files: list[str]) -> None:
+    if not isinstance(payload, dict):
+        raise ValueError("Daily report stage1: LLM output must be a JSON object")
+
+    summary = payload.get("summary")
+    update_plan = payload.get("update_plan")
+    if not isinstance(summary, str):
+        raise ValueError("Daily report stage1: 'summary' must be a string")
+    if not isinstance(update_plan, list):
+        raise ValueError("Daily report stage1: 'update_plan' must be a list")
+
+    for idx, u in enumerate(update_plan):
+        if not isinstance(u, dict):
+            raise ValueError(f"Daily report stage1: update_plan[{idx}] must be an object")
+
+        file = u.get("file")
+        fmt = u.get("format")
+        reasoning = u.get("reasoning")
+        updated_fields = u.get("updated_fields")
+        prompt_key = u.get("prompt_key")
+
+        if not isinstance(file, str) or not file.strip():
+            raise ValueError(f"Daily report stage1: update_plan[{idx}].file must be a non-empty string")
+        if file not in tracked_files:
+            raise ValueError(f"Daily report stage1: update_plan[{idx}].file must be a tracked file: {file}")
+        if fmt not in ("md", "json"):
+            raise ValueError(f"Daily report stage1: update_plan[{idx}].format must be 'md' or 'json'")
+        if not isinstance(reasoning, str) or not reasoning.strip():
+            raise ValueError(f"Daily report stage1: update_plan[{idx}].reasoning must be a non-empty string")
+        if not isinstance(updated_fields, list):
+            raise ValueError(f"Daily report stage1: update_plan[{idx}].updated_fields must be a list")
+        if prompt_key not in ("md_page", "json_app"):
+            raise ValueError(f"Daily report stage1: update_plan[{idx}].prompt_key invalid")
+
+
+def _parse_update_plan(payload: dict[str, Any]) -> list[UpdatePlanItem]:
+    raw = payload.get("update_plan") or []
+    out: list[UpdatePlanItem] = []
+    for u in raw:
+        out.append(
+            UpdatePlanItem(
+                file=str(u.get("file") or ""),
+                format=u.get("format"),
+                reasoning=str(u.get("reasoning") or ""),
+                updated_fields=list(u.get("updated_fields") or []),
+                prompt_key=u.get("prompt_key"),
+            )
+        )
+    return out
 
 
 def _parse_updates(payload: dict[str, Any]) -> list[FileUpdate]:
@@ -188,6 +362,59 @@ def _parse_updates(payload: dict[str, Any]) -> list[FileUpdate]:
     return updates
 
 
+def _validate_daily_report_payload(payload: Any) -> None:
+    if not isinstance(payload, dict):
+        raise ValueError("Daily report: LLM output must be a JSON object")
+
+    updates = payload.get("updates") or []
+    if not isinstance(updates, list):
+        raise ValueError("Daily report: 'updates' must be a list")
+
+    for idx, u in enumerate(updates):
+        if not isinstance(u, dict):
+            raise ValueError(f"Daily report: updates[{idx}] must be an object")
+
+        file = u.get("file")
+        fmt = u.get("format")
+        reasoning = u.get("reasoning")
+        updated_fields = u.get("updated_fields")
+        changes = u.get("changes")
+
+        if not isinstance(file, str) or not file.strip():
+            raise ValueError(f"Daily report: updates[{idx}].file must be a non-empty string")
+        if fmt not in ("md", "json"):
+            raise ValueError(f"Daily report: updates[{idx}].format must be 'md' or 'json'")
+        if not isinstance(reasoning, str) or not reasoning.strip():
+            raise ValueError(f"Daily report: updates[{idx}].reasoning must be a non-empty string")
+        if not isinstance(updated_fields, list):
+            raise ValueError(f"Daily report: updates[{idx}].updated_fields must be a list")
+        if not isinstance(changes, list):
+            raise ValueError(f"Daily report: updates[{idx}].changes must be a list")
+
+        for c_idx, c in enumerate(changes):
+            if not isinstance(c, dict):
+                raise ValueError(f"Daily report: updates[{idx}].changes[{c_idx}] must be an object")
+            if c.get("type") not in ("added", "removed", "updated"):
+                raise ValueError(f"Daily report: updates[{idx}].changes[{c_idx}].type invalid")
+
+        if fmt == "md":
+            if len(changes) != 1:
+                raise ValueError(f"Daily report: md updates must include exactly one change (updates[{idx}])")
+            c0 = changes[0]
+            if c0.get("type") != "updated":
+                raise ValueError(f"Daily report: md change must be type='updated' (updates[{idx}])")
+            full_doc = c0.get("full_document")
+            if not isinstance(full_doc, str) or not full_doc.strip():
+                raise ValueError(f"Daily report: md update missing full_document (updates[{idx}])")
+        else:
+            # json: should not include full_document payloads
+            for c_idx, c in enumerate(changes):
+                if c.get("full_document") not in (None, ""):
+                    raise ValueError(
+                        f"Daily report: json change must not include full_document (updates[{idx}].changes[{c_idx}])"
+                    )
+
+
 def _find_target_list(root: Any) -> tuple[Any, list]:
     if isinstance(root, list):
         return root, root
@@ -197,12 +424,6 @@ def _find_target_list(root: Any) -> tuple[Any, list]:
             if isinstance(val, list):
                 return root, val
     raise ValueError("Unsupported JSON shape (expected list or dict with items/topics list)")
-
-
-def _get_id_value(item: Any) -> Any:
-    if isinstance(item, dict) and "id" in item:
-        return item["id"]
-    return None
 
 
 def _apply_json_added(target_list: list, data: Any) -> list[str]:
@@ -280,10 +501,6 @@ def apply_json_changes(current: Any, changes: list[FileChange]) -> tuple[Any, li
         elif ch.type == "updated":
             applied.extend(_apply_json_updated(target_list, ch.data))
     return current, applied
-
-
-def _json_pretty(obj: Any) -> str:
-    return json.dumps(obj, ensure_ascii=False, indent=2)
 
 
 def _split_paragraphs(text: str) -> list[str]:
@@ -507,71 +724,6 @@ def _extract_md_relevant_lines(full_doc: str, reasoning: str | None) -> list[tup
             break
     return out
 
-def _md_change_paragraphs(before: str, after: str) -> dict[str, list[str]]:
-    """
-    Returns paragraphs changed, grouped by:
-      - added: paragraphs present in `after` inserted vs `before`
-      - deleted: paragraphs removed from `before`
-      - updated: paragraphs that replaced others (new paragraphs)
-
-    For 'replace', we treat it as deleted(old) + updated(new).
-    """
-    before_paras = _split_paragraphs(before)
-    after_paras = _split_paragraphs(after)
-
-    # Simple sequence matching without external dependencies:
-    # Use python's built-in difflib-like approach via SequenceMatcher from difflib module,
-    # but avoid importing it by implementing minimal logic: fallback to full replace.
-    #
-    # Keep it simple: if lists match, nothing changed.
-    if before_paras == after_paras:
-        return {"added": [], "deleted": [], "updated": []}
-
-    # Minimal, deterministic approach:
-    # - added: paragraphs in after not in before (by exact string)
-    # - deleted: paragraphs in before not in after
-    # - updated: if both added and deleted exist, consider added as updated and clear added
-    before_set = set(before_paras)
-    after_set = set(after_paras)
-    added = [p for p in after_paras if p not in before_set]
-    deleted = [p for p in before_paras if p not in after_set]
-    updated: list[str] = []
-
-    if added and deleted:
-        # Treat replacements as updates (new paragraphs)
-        updated = added
-        added = []
-
-    return {"added": added, "deleted": deleted, "updated": updated}
-
-
-def _flatten_value_changes(before: Any, after: Any, *, prefix: str = "") -> dict[str, Any]:
-    """
-    Return mapping of changed property paths -> new value.
-    - For dicts: recurse into keys.
-    - For lists/other: treat as atomic; if changed, record whole new value.
-    """
-    if before == after:
-        return {}
-
-    if isinstance(before, dict) and isinstance(after, dict):
-        out: dict[str, Any] = {}
-        keys = set(before.keys()) | set(after.keys())
-        for k in sorted(keys):
-            p = f"{prefix}.{k}" if prefix else str(k)
-            b = before.get(k)
-            a = after.get(k)
-            if isinstance(b, dict) and isinstance(a, dict):
-                out.update(_flatten_value_changes(b, a, prefix=p))
-            else:
-                if b != a:
-                    out[p] = a
-        return out
-
-    # Lists (or any other type) are treated as a whole value
-    return {prefix or "value": after}
-
-
 def _extract_ids_from_change(ch: FileChange) -> list[Any]:
     data = ch.data
     if ch.type in {"added", "updated"}:
@@ -595,66 +747,6 @@ def _extract_ids_from_change(ch: FileChange) -> list[Any]:
         return [data]
 
     return []
-
-
-def _index_items_by_id(obj: Any) -> dict[Any, Any]:
-    _, target_list = _find_target_list(obj)
-    out: dict[Any, Any] = {}
-    for item in target_list:
-        if isinstance(item, dict) and "id" in item:
-            out[item["id"]] = item
-    return out
-
-
-def _ids_from_applied(applied: list[str]) -> list[int]:
-    # applied strings look like: "added(id=12)" or "updated(id=12)"
-    ids: list[int] = []
-    for s in applied:
-        m = re.search(r"id=(\d+)", s)
-        if m:
-            ids.append(int(m.group(1)))
-    return ids
-
-
-def _json_items_diff_only(before_obj: Any, after_obj: Any, ids: list[Any]) -> list[dict[str, Any]]:
-    """
-    Return only actual diffs, formatted as requested:
-      {"id": <id>, "changes": [{"path": new_value}, ...]}
-    """
-    before_by_id = _index_items_by_id(before_obj)
-    after_by_id = _index_items_by_id(after_obj)
-
-    out: list[dict[str, Any]] = []
-    for item_id in ids:
-        b = before_by_id.get(item_id)
-        a = after_by_id.get(item_id)
-
-        # deleted item
-        if b is not None and a is None:
-            out.append({"id": item_id, "changes": [{"__deleted__": True}]})
-            continue
-
-        # created item: treat all fields (except id) as "changed"
-        if b is None and isinstance(a, dict):
-            a_no_id = dict(a)
-            a_no_id.pop("id", None)
-            flat = _flatten_value_changes({}, a_no_id, prefix="")
-            out.append({"id": item_id, "changes": [{k: v} for k, v in flat.items()]})
-            continue
-
-        # updated item: only changed fields (excluding id)
-        if isinstance(b, dict) and isinstance(a, dict):
-            b_no_id = dict(b)
-            a_no_id = dict(a)
-            b_no_id.pop("id", None)
-            a_no_id.pop("id", None)
-            flat = _flatten_value_changes(b_no_id, a_no_id, prefix="")
-            out.append({"id": item_id, "changes": [{k: v} for k, v in flat.items()]})
-            continue
-
-        out.append({"id": item_id, "changes": []})
-
-    return out
 
 
 def _flatten_payload(obj: Any, *, prefix: str = "") -> dict[str, Any]:
@@ -739,177 +831,319 @@ def _write_daily_updates_log(
     _write_json(_daily_updates_path_with_model(d, model_id), update_entries)
 
 
-async def run_daily_report(d: date, model: str | None = None, api_key: str | None = None) -> dict[str, Any]:
+def _load_stage2_md_prompt() -> str:
+    return _load_prompt(UPDATE_MD_APP_PAGE_PROMPT_PATH)
+
+
+def _load_stage2_json_prompt() -> str:
+    return _load_prompt(UPDATE_JSON_APP_DATA_PROMPT_PATH)
+
+
+def _load_stage2_file_prompt(target_file: str) -> str | None:
+    file_prompts: dict[str, Path] = {
+        "data/app_pages/Education.md": UPDATE_EDUCATION_MD_PROMPT_PATH,
+        "data/app_json/dante_topics_to_discuss.json": UPDATE_DANTE_TOPICS_JSON_PROMPT_PATH,
+        "data/app_json/todo_list.json": UPDATE_TODO_LIST_JSON_PROMPT_PATH,
+        "data/app_json/video.json": UPDATE_VIDEO_JSON_PROMPT_PATH,
+    }
+    p = file_prompts.get(target_file)
+    if not p:
+        return None
+    if not p.exists():
+        return None
+    return _load_prompt(p)
+
+
+def _build_stage2_system_prompt(prompt_key: PromptKey, *, target_file: str) -> str:
+    base = _load_updates_context_prompt().rstrip()
+    file_prompt = _load_stage2_file_prompt(target_file)
+    if file_prompt:
+        p = file_prompt.rstrip()
+    elif prompt_key == "md_page":
+        p = _load_stage2_md_prompt().rstrip()
+    else:
+        p = _load_stage2_json_prompt().rstrip()
+    return f"{base}\n\n{p}\n"
+
+
+def _validate_stage2_update_object(obj: Any) -> None:
+    """
+    Validate a single stage2 update object using the existing per-update rules.
+    """
+    _validate_daily_report_payload({"updates": [obj]})
+
+
+def _parse_single_update(obj: dict[str, Any]) -> FileUpdate:
+    updates = _parse_updates({"updates": [obj]})
+    if len(updates) != 1:
+        raise ValueError("Stage2: expected exactly one update object")
+    return updates[0]
+
+
+def _read_current_file_content(rel_path: str) -> str:
+    abs_path = REPO_ROOT / rel_path
+    if not abs_path.exists():
+        return ""
+    return abs_path.read_text(encoding="utf-8")
+
+
+def _apply_file_update_and_build_log_entry(
+    d: date,
+    *,
+    upd: FileUpdate,
+    model_id: str,
+    cost: float,
+) -> dict[str, Any]:
+    abs_path = REPO_ROOT / upd.file
+
+    if upd.format == "md":
+        full_doc = None
+        for c in upd.changes:
+            if c.full_document:
+                full_doc = c.full_document
+                break
+        if full_doc is None:
+            raise ValueError(f"Missing full_document for md update: {upd.file}")
+
+        before = _read_text(abs_path) if abs_path.exists() else ""
+        _write_text(abs_path, full_doc)
+        line_changes = _md_line_changes(before, full_doc)
+
+        # Re-run fallback: if no actual diffs, still log relevant lines (as updated)
+        if not line_changes["added"] and not line_changes["updated"] and not line_changes["deleted"]:
+            doc_lines = [ln.rstrip("\n") for ln in full_doc.splitlines()]
+
+            picked = _extract_md_relevant_lines(full_doc, upd.reasoning)
+            if picked:
+                line_changes["updated"] = [{"title": _nearest_heading(doc_lines, idx), "text": txt} for idx, txt in picked]
+            else:
+                fallback_blocks = _extract_md_snippets(full_doc, upd.updated_fields)
+                if not fallback_blocks:
+                    fallback_blocks = _extract_md_snippets_from_reasoning(full_doc, upd.reasoning)
+                fallback_lines = _normalize_md_log_lines(fallback_blocks)
+
+                bullets = [ln for ln in fallback_lines if ln.startswith(("-", "*"))]
+                chosen = bullets[:8] if bullets else fallback_lines[:3]
+
+                r = (upd.reasoning or "").lower()
+                keys = [w for w in re.findall(r"[a-z0-9]+", r) if len(w) >= 4]
+                keys = list(dict.fromkeys(keys))[:12]
+                if keys:
+                    chosen2 = [ln for ln in chosen if any(k in ln.lower() for k in keys)]
+                    chosen = chosen2 if chosen2 else (bullets[:1] if bullets else chosen[:1])
+
+                if chosen:
+                    default_title = next((ln.strip() for ln in doc_lines if ln.strip().startswith("#")), "")
+                    line_changes["updated"] = [{"title": default_title, "text": ln} for ln in chosen]
+
+        md_changes_arr: list[dict[str, Any]] = []
+        reason = (upd.reasoning or "").strip() or "(missing)"
+        for t in ("added", "updated", "deleted"):
+            items = line_changes[t]
+            if not items:
+                continue
+            data = [{"title": it.get("title", ""), "text": it.get("text", ""), "reasoning": reason} for it in items]
+            md_changes_arr.append({"type": t, "data": data})
+
+        return {
+            "file": upd.file,
+            "date": d.isoformat(),
+            "model": model_id,
+            "cost": cost,
+            "type": "day.summary",
+            "changes": md_changes_arr,
+        }
+
+    if upd.format == "json":
+        current = _read_json(abs_path) if abs_path.exists() else []
+        updated_obj, _ = apply_json_changes(
+            current=current,
+            changes=upd.changes,
+        )
+        _write_json(abs_path, updated_obj)
+
+        grouped: dict[str, list[dict[str, Any]]] = {"added": [], "updated": [], "deleted": []}
+        for ch in upd.changes:
+            if ch.type == "removed":
+                ids = _extract_ids_from_change(ch)
+                for item_id in ids:
+                    grouped["deleted"].append({"id": item_id, "changes": [{"__deleted__": True}]})
+                continue
+            items = _json_items_from_llm_changes_compact([ch])
+            if ch.type == "added":
+                grouped["added"].extend(items)
+            elif ch.type == "updated":
+                grouped["updated"].extend(items)
+
+        def _dedup(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            seen: set[Any] = set()
+            out: list[dict[str, Any]] = []
+            for it in items:
+                i = it.get("id")
+                if i in seen:
+                    continue
+                seen.add(i)
+                out.append(it)
+            return out
+
+        json_changes_arr: list[dict[str, Any]] = []
+        reason = (upd.reasoning or "").strip() or "(missing)"
+        for t in ("added", "updated", "deleted"):
+            items = _dedup(grouped[t])
+            if not items:
+                continue
+            data = [{"id": it.get("id"), "changes": it.get("changes") or [], "reasoning": reason} for it in items]
+            json_changes_arr.append({"type": t, "data": data})
+
+        return {
+            "file": upd.file,
+            "date": d.isoformat(),
+            "model": model_id,
+            "cost": cost,
+            "type": "day.summary",
+            "changes": json_changes_arr,
+        }
+
+    raise ValueError(f"Unknown format: {upd.format} for {upd.file}")
+
+
+async def run_daily_report(
+    d: date,
+    model: str | None = None,
+    api_key: str | None = None,
+    *,
+    send: bool = True,
+) -> dict[str, Any]:
     api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         raise RuntimeError("Missing OPENROUTER_API_KEY")
 
-    payload = _build_context_payload(d)
-    model_to_use = model or DEFAULT_MODELS[0]
+    model_to_use = model or get_default_model_from_env(DEFAULT_MODELS)
 
-    response = await _call_model(
+    # Fast path: no messages => no LLM calls and no updates.
+    messages_path = _daily_messages_path(d)
+    report_text = messages_path.read_text(encoding="utf-8") if messages_path.exists() else ""
+    if not report_text.strip():
+        summary_md = "(no messages)"
+        model_id_for_files = model_to_use
+        report_md = _write_daily_summary(d, summary_md=summary_md, model_id=model_id_for_files)
+        _write_daily_updates_log(d, cost=0.0, update_entries=[], model_id=model_id_for_files)
+        if send:
+            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+            group_id = os.environ.get("GROUP_ID")
+            if not bot_token or not bot_token.strip():
+                raise RuntimeError("Missing TELEGRAM_BOT_TOKEN (required for sending)")
+            if not group_id or not group_id.strip():
+                raise RuntimeError("Missing GROUP_ID (required for sending)")
+            try:
+                chat_id = int(group_id)
+            except Exception as e:
+                raise RuntimeError(f"Invalid GROUP_ID={group_id!r} (must be an integer chat id)") from e
+            text = f"DAILY REPORT {d.isoformat()}\n\n{report_md.strip()}"
+            await send_telegram_long_text(bot_token=bot_token, chat_id=chat_id, text=text)
+        return {
+            "date": d.isoformat(),
+            "summary": summary_md,
+            "updates": [],
+            "update_plan": [],
+            "daily_messages_path": str(_daily_messages_path(d).relative_to(REPO_ROOT)),
+            "daily_summary_path": str(_daily_summary_path_with_model(d, model_id_for_files).relative_to(REPO_ROOT)),
+            "daily_updates_path": str(_daily_updates_path_with_model(d, model_id_for_files).relative_to(REPO_ROOT)),
+            "daily_summary_text": report_md,
+        }
+
+    # Stage 1: summary + update_plan (no file edits).
+    payload_stage1 = _build_stage1_payload(d)
+    tracked_files = list((payload_stage1.get("updates_context") or {}).get("tracked_files") or [])
+    response_stage1 = await _call_model(
         model=model_to_use,
         api_key=api_key,
-        system=_daily_prompt(),
-        user_content=json.dumps(payload, ensure_ascii=False),
-        max_tokens=4000,
+        system=_build_stage1_system_prompt(),
+        user_content=json.dumps(payload_stage1, ensure_ascii=False),
+        max_tokens=2500,
     )
-    parsed = json.loads(response.content)
+    parsed_stage1 = json.loads(response_stage1.content)
+    _validate_stage1_payload(parsed_stage1, tracked_files=tracked_files)
+    plan_items = _parse_update_plan(parsed_stage1)
 
     _append_llm_log(
-        model=response.model,
-        input_data={"date": d.isoformat(), "daily_report_messages": "<see file>", "context_files": payload["context_files"]},
-        output_data=parsed,
-        cost=response.cost,
-        context_files=list(payload["context_files"]),
+        model=response_stage1.model,
+        input_data={"date": d.isoformat(), "daily_report_messages": "<see file>", "stage": 1, "updates_context": "<catalog>"},
+        output_data=parsed_stage1,
+        cost=response_stage1.cost,
+        context_files=tracked_files,
     )
 
-    updates = _parse_updates(parsed)
+    # Stage 2: file-by-file updates based on plan_items.
     update_entries: list[dict[str, Any]] = []
+    updates_out: list[dict[str, Any]] = []
+    total_cost = float(response_stage1.cost or 0.0)
+    updates_context = payload_stage1.get("updates_context") or {}
 
-    for upd in updates:
-        abs_path = REPO_ROOT / upd.file
-        existed_before = abs_path.exists()
-        if upd.format == "md":
-            full_doc = None
-            for c in upd.changes:
-                if c.full_document:
-                    full_doc = c.full_document
-                    break
-            if full_doc is None:
-                raise ValueError(f"Missing full_document for md update: {upd.file}")
-            before = _read_text(abs_path) if abs_path.exists() else ""
-            _write_text(abs_path, full_doc)
-            line_changes = _md_line_changes(before, full_doc)
+    for item in plan_items:
+        current_content = _read_current_file_content(item.file)
+        stage2_payload = {
+            "date": d.isoformat(),
+            "daily_report_messages": report_text,
+            "target_file": item.file,
+            "current_content": current_content,
+            "updated_fields": item.updated_fields,
+            "reasoning": item.reasoning,
+            "updates_context": updates_context,
+        }
+        response2 = await _call_model(
+            model=model_to_use,
+            api_key=api_key,
+            system=_build_stage2_system_prompt(item.prompt_key, target_file=item.file),
+            user_content=json.dumps(stage2_payload, ensure_ascii=False),
+            max_tokens=4000,
+        )
+        total_cost += float(response2.cost or 0.0)
 
-            # Re-run fallback: if no actual diffs, still log the relevant lines (as updated)
-            if not line_changes["added"] and not line_changes["updated"] and not line_changes["deleted"]:
-                doc_lines = [ln.rstrip("\n") for ln in full_doc.splitlines()]
+        parsed_update = json.loads(response2.content)
+        _validate_stage2_update_object(parsed_update)
 
-                # Best signal: pick the most relevant bullet/sentence lines from reasoning
-                picked = _extract_md_relevant_lines(full_doc, upd.reasoning)
-                if picked:
-                    line_changes["updated"] = [
-                        {"title": _nearest_heading(doc_lines, idx), "text": txt} for idx, txt in picked
-                    ]
-                else:
-                    # Fallback: extract from updated_fields blocks, but only keep meaningful lines
-                    fallback_blocks = _extract_md_snippets(full_doc, upd.updated_fields)
-                    if not fallback_blocks:
-                        fallback_blocks = _extract_md_snippets_from_reasoning(full_doc, upd.reasoning)
-                    fallback_lines = _normalize_md_log_lines(fallback_blocks)
-                    # Keep only bullet lines if any exist; otherwise keep first 3 lines
-                    bullets = [ln for ln in fallback_lines if ln.startswith(("-", "*"))]
-                    chosen = bullets[:8] if bullets else fallback_lines[:3]
+        _append_llm_log(
+            model=response2.model,
+            input_data={"date": d.isoformat(), "target_file": item.file, "stage": 2, "updated_fields": item.updated_fields},
+            output_data=parsed_update,
+            cost=response2.cost,
+            context_files=[item.file],
+        )
 
-                    # Reduce noise: keep only lines that match reasoning keywords (if any)
-                    r = (upd.reasoning or "").lower()
-                    keys = [w for w in re.findall(r"[a-z0-9]+", r) if len(w) >= 4]
-                    keys = list(dict.fromkeys(keys))[:12]
-                    if keys:
-                        chosen2 = [ln for ln in chosen if any(k in ln.lower() for k in keys)]
-                        # If nothing matched (rare), fall back to the first bullet
-                        chosen = chosen2 if chosen2 else (bullets[:1] if bullets else chosen[:1])
+        upd = _parse_single_update(parsed_update)
+        entry = _apply_file_update_and_build_log_entry(d, upd=upd, model_id=response2.model, cost=response2.cost)
+        update_entries.append(entry)
+        updates_out.append(parsed_update)
 
-                    if chosen:
-                        # attach the section heading if possible (use first heading in doc)
-                        default_title = next((ln.strip() for ln in doc_lines if ln.strip().startswith("#")), "")
-                        line_changes["updated"] = [{"title": default_title, "text": ln} for ln in chosen]
-
-            md_changes_arr: list[dict[str, Any]] = []
-            reason = (upd.reasoning or "").strip() or "(missing)"
-            for t in ("added", "updated", "deleted"):
-                items = line_changes[t]
-                if not items:
-                    continue
-                # Put reasoning on every item (as requested)
-                data = [{"title": it.get("title", ""), "text": it.get("text", ""), "reasoning": reason} for it in items]
-                md_changes_arr.append({"type": t, "data": data})
-            update_entries.append(
-                {
-                    "file": upd.file,
-                    "date": d.isoformat(),
-                    "model": response.model,
-                    "cost": response.cost,
-                    "type": "day.summary",
-                    "changes": md_changes_arr,
-                }
-            )
-            continue
-
-        if upd.format == "json":
-            current = _read_json(abs_path) if abs_path.exists() else []
-            before_obj = copy.deepcopy(current)
-            updated_obj, applied = apply_json_changes(
-                current=current,
-                changes=upd.changes,
-            )
-            _write_json(abs_path, updated_obj)
-            _ = before_obj
-            _ = updated_obj
-            # Group compact items by change type (added/updated/deleted)
-            grouped: dict[str, list[dict[str, Any]]] = {"added": [], "updated": [], "deleted": []}
-            for ch in upd.changes:
-                if ch.type == "removed":
-                    ids = _extract_ids_from_change(ch)
-                    for item_id in ids:
-                        grouped["deleted"].append({"id": item_id, "changes": [{"__deleted__": True}]})
-                    continue
-                # added/updated: use compact per-id changes
-                items = _json_items_from_llm_changes_compact([ch])
-                if ch.type == "added":
-                    grouped["added"].extend(items)
-                elif ch.type == "updated":
-                    grouped["updated"].extend(items)
-
-            # De-dup within each group by id (preserve first)
-            def _dedup(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-                seen: set[Any] = set()
-                out: list[dict[str, Any]] = []
-                for it in items:
-                    i = it.get("id")
-                    if i in seen:
-                        continue
-                    seen.add(i)
-                    out.append(it)
-                return out
-
-            json_changes_arr: list[dict[str, Any]] = []
-            for t in ("added", "updated", "deleted"):
-                items = _dedup(grouped[t])
-                if items:
-                    reason = (upd.reasoning or "").strip() or "(missing)"
-                    # Put reasoning on every item (as requested)
-                    data = []
-                    for it in items:
-                        data.append({"id": it.get("id"), "changes": it.get("changes") or [], "reasoning": reason})
-                    json_changes_arr.append({"type": t, "data": data})
-            update_entries.append(
-                {
-                    "file": upd.file,
-                    "date": d.isoformat(),
-                    "model": response.model,
-                    "cost": response.cost,
-                    "type": "day.summary",
-                    "changes": json_changes_arr,
-                }
-            )
-            continue
-
-        raise ValueError(f"Unknown format: {upd.format} for {upd.file}")
-
-    summary_md = str(parsed.get("summary") or "").strip() or "(no summary)"
-    report_text = _write_daily_summary(d, summary_md=summary_md, model_id=response.model)
-    _write_daily_updates_log(d, cost=response.cost, update_entries=update_entries, model_id=response.model)
+    summary_md = str(parsed_stage1.get("summary") or "").strip() or "(no summary)"
+    model_id_for_files = response_stage1.model
+    report_md = _write_daily_summary(d, summary_md=summary_md, model_id=model_id_for_files)
+    _write_daily_updates_log(d, cost=total_cost, update_entries=update_entries, model_id=model_id_for_files)
+    if send:
+        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        group_id = os.environ.get("GROUP_ID")
+        if not bot_token or not bot_token.strip():
+            raise RuntimeError("Missing TELEGRAM_BOT_TOKEN (required for sending)")
+        if not group_id or not group_id.strip():
+            raise RuntimeError("Missing GROUP_ID (required for sending)")
+        try:
+            chat_id = int(group_id)
+        except Exception as e:
+            raise RuntimeError(f"Invalid GROUP_ID={group_id!r} (must be an integer chat id)") from e
+        text = f"DAILY REPORT {d.isoformat()}\n\n{report_md.strip()}"
+        await send_telegram_long_text(bot_token=bot_token, chat_id=chat_id, text=text)
 
     return {
         "date": d.isoformat(),
         "summary": summary_md,
-        "updates": parsed.get("updates") or [],
+        "updates": updates_out,
+        "update_plan": [u.__dict__ for u in plan_items],
         "daily_messages_path": str(_daily_messages_path(d).relative_to(REPO_ROOT)),
-        "daily_summary_path": str(_daily_summary_path_with_model(d, response.model).relative_to(REPO_ROOT)),
-        "daily_updates_path": str(_daily_updates_path_with_model(d, response.model).relative_to(REPO_ROOT)),
-        "daily_summary_text": report_text,
+        "daily_summary_path": str(_daily_summary_path_with_model(d, model_id_for_files).relative_to(REPO_ROOT)),
+        "daily_updates_path": str(_daily_updates_path_with_model(d, model_id_for_files).relative_to(REPO_ROOT)),
+        "daily_summary_text": report_md,
+        "sent": bool(send),
     }
 
 
@@ -928,6 +1162,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run daily report update job")
     parser.add_argument("--date", default=date.today().isoformat(), help="YYYY-MM-DD (default: today)")
     parser.add_argument("--model", default=None, help="OpenRouter model id (optional)")
+    parser.add_argument("--no-send", action="store_true", help="Do not send to Telegram (default: send)")
     args = parser.parse_args()
 
     d = _parse_date(args.date)
@@ -935,7 +1170,7 @@ def main() -> None:
 
     import asyncio
 
-    result = asyncio.run(run_daily_report(d, model=model))
+    result = asyncio.run(run_daily_report(d, model=model, send=not args.no_send))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

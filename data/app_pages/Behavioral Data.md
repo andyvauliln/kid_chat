@@ -40,6 +40,7 @@
    - Can become very impulsive and hysterical
    - Outbursts sometimes occur "from nothing"
    - Difficulty managing emotions when frustrated
+   - Example: Tantrums at the playground when toys are taken by others.
 
 2. **Listening and Compliance:**
    - Often does not listen, especially during emotional states
@@ -117,3 +118,4 @@ Every day, ask Dante:
 - Who was kind to you today?
 - What new thing did you learn or find out today?
 - How many times did you try before something worked (or didn't work)?
+- Were you kind to your body by eating healthy foods today?

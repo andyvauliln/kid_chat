@@ -40,5 +40,6 @@
     - Vanya should notify 1 day before (preferably earlier)
     - Rotate who chooses activity: Vanya chooses one day, Andrei next, etc.
   - Sometimes: Can stay sleepover with Andrei until school Monday
+  - Swimming (weather permitting, maybe next month)
 
 ---

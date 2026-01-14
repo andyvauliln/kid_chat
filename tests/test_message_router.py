@@ -1,27 +1,33 @@
 """
-Test runner for message router.
-Loads test cases from message_types_test.json and validates router output.
+Router contract tests (no network).
+
+These tests validate:
+- the test case fixture shape (tests/message_types_test.json)
+- the output validation helpers used by manual/integration runners
+
+LLM calls are intentionally not part of the default test suite.
 """
 
+from __future__ import annotations
+
 import json
-import os
-import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-# Will import once implemented
-# from group_chat_telegram_ai.message_router import route_message
 
-
+REPO_ROOT = Path(__file__).resolve().parent.parent
 TEST_FILE = Path(__file__).parent / "message_types_test.json"
 
 
-def load_test_cases() -> list[dict]:
-    """Load test cases from JSON file."""
-    with open(TEST_FILE, encoding="utf-8") as f:
+def load_test_cases() -> list[dict[str, Any]]:
+    with TEST_FILE.open(encoding="utf-8") as f:
         data = json.load(f)
-    return data["test_cases"]
+    cases = data.get("test_cases")
+    if not isinstance(cases, list):
+        raise ValueError("message_types_test.json: missing/invalid test_cases list")
+    return cases
 
 
 def check_contains(actual: str | None, expected_pattern: str) -> bool:
@@ -31,115 +37,67 @@ def check_contains(actual: str | None, expected_pattern: str) -> bool:
     """
     if actual is None:
         return False
-    
+
     actual_lower = actual.lower()
-    
+
     # Remove "contains:" prefix if present
     pattern = expected_pattern
     if pattern.startswith("contains:"):
         pattern = pattern[9:].strip()
-    
+
     # Handle AND
     if " AND " in pattern:
         parts = pattern.split(" AND ")
         return all(p.strip().lower() in actual_lower for p in parts)
-    
+
     # Handle OR
     if " OR " in pattern:
         parts = pattern.split(" OR ")
         return any(p.strip().lower() in actual_lower for p in parts)
-    
+
     # Simple contains
     return pattern.lower() in actual_lower
-
-
-def check_file_updates(actual_updates: list[dict], expected_updates: list[dict]) -> tuple[bool, str]:
-    """
-    Check if actual file updates match expected.
-    Returns (passed, error_message).
-    """
-    if not expected_updates:
-        return True, ""
-    
-    errors = []
-    
-    for expected in expected_updates:
-        expected_file = expected.get("file", "")
-        found = False
-        
-        for actual in actual_updates:
-            actual_file = actual.get("file", "")
-            
-            # Check if file path matches (partial match allowed)
-            if expected_file in actual_file or actual_file.endswith(expected_file):
-                found = True
-                
-                # Check what_contains if specified
-                what_contains = expected.get("what_contains")
-                if what_contains:
-                    actual_what = str(actual.get("what", ""))
-                    if not check_contains(actual_what, f"contains: {what_contains}"):
-                        errors.append(f"File {expected_file}: 'what' should contain '{what_contains}', got '{actual_what}'")
-                
-                # Check action if specified
-                expected_action = expected.get("action")
-                if expected_action and actual.get("action") != expected_action:
-                    errors.append(f"File {expected_file}: action should be '{expected_action}', got '{actual.get('action')}'")
-                
-                break
-        
-        if not found:
-            errors.append(f"Missing update for file: {expected_file}")
-    
-    if errors:
-        return False, "; ".join(errors)
-    return True, ""
 
 
 def check_context_files(actual_files: list[str], expected_patterns: list[str]) -> tuple[bool, str]:
     """Check if actual context files match expected patterns."""
     if not expected_patterns:
         return True, ""
-    
+
     errors = []
-    actual_joined = " ".join(actual_files).lower()
-    
+    actual_joined = " ".join(str(x) for x in (actual_files or [])).lower()
+
     for pattern in expected_patterns:
         if pattern.lower() not in actual_joined:
             errors.append(f"Missing context file matching: {pattern}")
-    
+
     if errors:
         return False, "; ".join(errors)
     return True, ""
 
 
-def validate_output(actual: dict, expected: dict) -> tuple[bool, list[str]]:
+def validate_output(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool, list[str]]:
     """
     Validate router output against expected values.
     Returns (passed, list of errors).
     """
     errors = []
-    
+
     # Check message_en
     if "message_en" in expected:
         exp = expected["message_en"]
         act = actual.get("message_en", "")
-        if exp.startswith("contains:"):
+        if isinstance(exp, str) and exp.startswith("contains:"):
             if not check_contains(act, exp):
                 errors.append(f"message_en: expected {exp}, got '{act}'")
         elif act != exp:
             errors.append(f"message_en: expected '{exp}', got '{act}'")
-    
-    # Check intent
-    if "intent" in expected:
-        if actual.get("intent") != expected["intent"]:
-            errors.append(f"intent: expected '{expected['intent']}', got '{actual.get('intent')}'")
-    
+
     # Check needs_context
     if "needs_context" in expected:
         if actual.get("needs_context") != expected["needs_context"]:
             errors.append(f"needs_context: expected {expected['needs_context']}, got {actual.get('needs_context')}")
-    
+
     # Check response
     if "response" in expected:
         exp = expected["response"]
@@ -150,6 +108,11 @@ def validate_output(actual: dict, expected: dict) -> tuple[bool, list[str]]:
         elif isinstance(exp, str) and exp.startswith("contains:"):
             if not check_contains(act, exp):
                 errors.append(f"response: expected {exp}, got '{act}'")
+
+    if expected.get("response_not_null") is True:
+        act = actual.get("response")
+        if not isinstance(act, str) or not act.strip():
+            errors.append(f"response: expected non-empty string, got '{act}'")
     
     # Check context_files
     if "context_files_must_include" in expected:
@@ -159,53 +122,54 @@ def validate_output(actual: dict, expected: dict) -> tuple[bool, list[str]]:
         )
         if not passed:
             errors.append(f"context_files: {err}")
-    
+
     # Check question_for_next_llm
     if "question_for_next_llm" in expected:
         exp = expected["question_for_next_llm"]
         act = actual.get("question_for_next_llm", "")
-        if exp.startswith("contains:"):
+        if isinstance(exp, str) and exp.startswith("contains:"):
             if not check_contains(act, exp):
                 errors.append(f"question_for_next_llm: expected {exp}, got '{act}'")
-    
-    # Check file_updates
-    if "file_updates_must_include" in expected:
-        passed, err = check_file_updates(
-            actual.get("file_updates", []),
-            expected["file_updates_must_include"]
-        )
-        if not passed:
-            errors.append(f"file_updates: {err}")
-    
+
     return len(errors) == 0, errors
 
 
-# Generate test IDs for pytest
-def get_test_ids():
+def _app_pages_filenames() -> set[str]:
+    app_pages = REPO_ROOT / "data" / "app_pages"
+    if not app_pages.exists():
+        return set()
+    return {p.name for p in app_pages.glob("*.md")}
+
+
+def test_message_types_test_cases_are_well_formed():
     cases = load_test_cases()
-    return [f"{c['id']}_{c['name'].replace(' ', '_')}" for c in cases]
+    assert cases, "message_types_test.json has no test_cases"
 
+    app_pages_names = _app_pages_filenames()
+    for tc in cases:
+        assert isinstance(tc, dict)
+        assert isinstance(tc.get("id"), str) and tc["id"].strip()
+        assert isinstance(tc.get("name"), str) and tc["name"].strip()
+        assert isinstance(tc.get("input"), dict)
+        assert isinstance(tc.get("expected"), dict)
 
-@pytest.fixture
-def test_cases():
-    return load_test_cases()
+        expected = tc["expected"]
+        assert "needs_context" in expected
+        assert isinstance(expected["needs_context"], bool)
 
+        # Ensure context patterns reference real files (exact path or filename).
+        patterns = expected.get("context_files_must_include") or []
+        assert isinstance(patterns, list)
+        for pat in patterns:
+            assert isinstance(pat, str) and pat.strip()
+            if "/" in pat:
+                assert (REPO_ROOT / pat).exists(), f"Missing file referenced by test: {pat}"
+            elif pat.endswith(".md"):
+                assert pat in app_pages_names, f"Unknown app_pages markdown referenced by test: {pat}"
 
-class TestMessageRouter:
-    """Test class for message router."""
-    
-    @pytest.mark.parametrize("test_case", load_test_cases(), ids=get_test_ids())
-    def test_route_message(self, test_case):
-        """Test single message routing."""
-        # Skip until router is implemented
-        pytest.skip("Router not implemented yet - use test_manual_router for manual testing")
-        
-        # from group_chat_telegram_ai.message_router import route_message
-        # 
-        # result = route_message(test_case["input"])
-        # passed, errors = validate_output(result, test_case["expected"])
-        # 
-        # assert passed, f"Test {test_case['id']} failed:\n" + "\n".join(f"  - {e}" for e in errors)
+        # Ensure response expectations aren't contradictory.
+        if "response" in expected and expected.get("response") is None and expected.get("response_not_null") is True:
+            raise AssertionError(f"{tc['id']}: expected response both null and not null")
 
 
 async def run_single_test(test_case: dict, route_fn) -> dict:

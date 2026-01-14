@@ -1,0 +1,258 @@
+[
+  {
+    "file": "data/app_pages/Education.md",
+    "date": "2026-01-14",
+    "model": "google/gemini-2.0-flash-001",
+    "cost": 0.0009228000000000001,
+    "type": "day.summary",
+    "changes": [
+      {
+        "type": "added",
+        "data": [
+          {
+            "title": "### 3.2 Numeracy Skills (High Priority)",
+            "text": "- Keep numeracy sessions short (5-15 minutes) to match his attention span.",
+            "reasoning": "Dante learned numbers one to ten, but struggles with seven and eight: \"Today Dante learned numbers one to ten. He can do it but still has trouble with seven and eight.\"\nAI provided advice on how to help Dante with numbers: \"Based on Dante's profile, here are some practical steps to help him engage with learning numbers:\""
+          },
+          {
+            "title": "### 3.2 Numeracy Skills (High Priority)",
+            "text": "- Switch activities frequently to maintain engagement.",
+            "reasoning": "Dante learned numbers one to ten, but struggles with seven and eight: \"Today Dante learned numbers one to ten. He can do it but still has trouble with seven and eight.\"\nAI provided advice on how to help Dante with numbers: \"Based on Dante's profile, here are some practical steps to help him engage with learning numbers:\""
+          },
+          {
+            "title": "### 3.2 Numeracy Skills (High Priority)",
+            "text": "- Use a reward system for completing numeracy tasks. This could be verbal praise, stickers, or small, non-material rewards.",
+            "reasoning": "Dante learned numbers one to ten, but struggles with seven and eight: \"Today Dante learned numbers one to ten. He can do it but still has trouble with seven and eight.\"\nAI provided advice on how to help Dante with numbers: \"Based on Dante's profile, here are some practical steps to help him engage with learning numbers:\""
+          },
+          {
+            "title": "### 3.2 Numeracy Skills (High Priority)",
+            "text": "- Combine learning with physical activity. For example, count steps while walking or jumping.",
+            "reasoning": "Dante learned numbers one to ten, but struggles with seven and eight: \"Today Dante learned numbers one to ten. He can do it but still has trouble with seven and eight.\"\nAI provided advice on how to help Dante with numbers: \"Based on Dante's profile, here are some practical steps to help him engage with learning numbers:\""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "data/app_json/video.json",
+    "date": "2026-01-14",
+    "model": "google/gemini-2.0-flash-001",
+    "cost": 0.0011562,
+    "type": "day.summary",
+    "changes": [
+      {
+        "type": "updated",
+        "data": [
+          {
+            "id": 12,
+            "changes": [
+              {
+                "added_by": "Vanya"
+              },
+              {
+                "content_warnings": []
+              },
+              {
+                "description": "Good for learning about responsibility."
+              },
+              {
+                "duration.episode_minutes": null
+              },
+              {
+                "duration.movie_minutes": null
+              },
+              {
+                "link": null
+              },
+              {
+                "name": "Lion King"
+              },
+              {
+                "notes": null
+              },
+              {
+                "recommended_age.max": null
+              },
+              {
+                "recommended_age.min": 6
+              },
+              {
+                "seasons": null
+              },
+              {
+                "status.last_watched": null
+              },
+              {
+                "status.liked": null
+              },
+              {
+                "status.recently_watched": false
+              },
+              {
+                "status.watch_times": 0
+              },
+              {
+                "status.watched": false
+              },
+              {
+                "tags": [
+                  "responsibility"
+                ]
+              },
+              {
+                "trailer": null
+              },
+              {
+                "type": "movie"
+              }
+            ],
+            "reasoning": "Lion King and Bluey are being considered for the video list: \"Add Lion King to the video list. It's good for learning about responsibility.\" and \"Found a good cartoon called Bluey, seems educational and fun. Should we add it?\""
+          },
+          {
+            "id": 13,
+            "changes": [
+              {
+                "added_by": "Hirja"
+              },
+              {
+                "content_warnings": []
+              },
+              {
+                "description": "Educational and fun cartoon."
+              },
+              {
+                "duration.episode_minutes": 7
+              },
+              {
+                "duration.movie_minutes": null
+              },
+              {
+                "link": "https://www.youtube.com/channel/UCyJ5n8zLq8hY0R-2nKtfmQQ"
+              },
+              {
+                "name": "Bluey"
+              },
+              {
+                "notes": null
+              },
+              {
+                "recommended_age.max": 7
+              },
+              {
+                "recommended_age.min": 3
+              },
+              {
+                "seasons": 3
+              },
+              {
+                "status.last_watched": null
+              },
+              {
+                "status.liked": null
+              },
+              {
+                "status.recently_watched": false
+              },
+              {
+                "status.watch_times": 0
+              },
+              {
+                "status.watched": false
+              },
+              {
+                "tags": [
+                  "educational",
+                  "fun"
+                ]
+              },
+              {
+                "trailer": null
+              },
+              {
+                "type": "series"
+              }
+            ],
+            "reasoning": "Lion King and Bluey are being considered for the video list: \"Add Lion King to the video list. It's good for learning about responsibility.\" and \"Found a good cartoon called Bluey, seems educational and fun. Should we add it?\""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "data/app_pages/Schedule.md",
+    "date": "2026-01-14",
+    "model": "google/gemini-2.0-flash-001",
+    "cost": 0.0008795000000000001,
+    "type": "day.summary",
+    "changes": [
+      {
+        "type": "updated",
+        "data": [
+          {
+            "title": "### 8.1 Monday - Friday Structure",
+            "text": "- **14:00 - 17:00/19:00** — After-school activities with Hirja (5 days) or Vanya (at least once per month, preferably 2 times)",
+            "reasoning": "Swimming is being considered for Sundays: \"Vanya] I think we should add swimming to Sunday activities.\" and \"[Andrei] Yes, let's add swimming to Sunday. Good idea Vanya\" and \"[Andrei] No swimming for now, maybe next month when weather is better\""
+          },
+          {
+            "title": "### 8.3 Sunday Structure (Andrei)",
+            "text": "- Vanya should notify 1 day before (preferably earlier)",
+            "reasoning": "Swimming is being considered for Sundays: \"Vanya] I think we should add swimming to Sunday activities.\" and \"[Andrei] Yes, let's add swimming to Sunday. Good idea Vanya\" and \"[Andrei] No swimming for now, maybe next month when weather is better\""
+          },
+          {
+            "title": "### 8.1 Monday - Friday Structure",
+            "text": "- Special events: Prison visits, charity visits, seeing how people in difficult situations live (organized by Vanya and Hirja, conversations prepared by Andrei)",
+            "reasoning": "Swimming is being considered for Sundays: \"Vanya] I think we should add swimming to Sunday activities.\" and \"[Andrei] Yes, let's add swimming to Sunday. Good idea Vanya\" and \"[Andrei] No swimming for now, maybe next month when weather is better\""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "data/app_pages/Behavioral Data.md",
+    "date": "2026-01-14",
+    "model": "google/gemini-2.0-flash-001",
+    "cost": 0.0010999,
+    "type": "day.summary",
+    "changes": [
+      {
+        "type": "added",
+        "data": [
+          {
+            "title": "### 4.1 Behavioral Challenges",
+            "text": "- Example: Tantrums at the playground when toys are taken by others.",
+            "reasoning": "Updated behavioral challenges and management strategy based on daily report messages: \"Dante had a big tantrum at the playground because another kid took his toy. He screamed for 15 minutes.\" and AI's advice on eating habits."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "data/app_pages/Menu.md",
+    "date": "2026-01-14",
+    "model": "google/gemini-2.0-flash-001",
+    "cost": 0.0016465,
+    "type": "day.summary",
+    "changes": [
+      {
+        "type": "updated",
+        "data": [
+          {
+            "title": "## What he doesn’t like (NOT CONFIRMED — check with everyone)",
+            "text": "- **Vegetables**",
+            "reasoning": "Updated the \"What he doesn’t like\" section based on the daily report message: \"Dante refused to eat vegetables again. He only wanted rice and chicken. What can I do to make him eat vegetables?\""
+          }
+        ]
+      },
+      {
+        "type": "deleted",
+        "data": [
+          {
+            "title": "## What he doesn’t like (NOT CONFIRMED — check with everyone)",
+            "text": "- Add items here after you observe patterns (taste/texture).",
+            "reasoning": "Updated the \"What he doesn’t like\" section based on the daily report message: \"Dante refused to eat vegetables again. He only wanted rice and chicken. What can I do to make him eat vegetables?\""
+          }
+        ]
+      }
+    ]
+  }
+]

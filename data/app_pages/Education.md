@@ -35,8 +35,14 @@
   - Master basic operations: addition (+) and subtraction (-)
   
 - **Educational Resources:**
+  - Turn learning numbers into a game. Use toys, blocks, or even his "Hulk" persona to count and perform basic operations.
+  - Continue using Numberblocks videos but break them into smaller segments.
   - Watch Numberblocks educational videos daily: 15 minutes to 1 hour
   - YouTube Channel: [Numberblocks Playlists](https://www.youtube.com/@Numberblocks/playlists)
+  - Keep numeracy sessions short (5-15 minutes) to match his attention span.
+  - Switch activities frequently to maintain engagement.
+  - Use a reward system for completing numeracy tasks. This could be verbal praise, stickers, or small, non-material rewards.
+  - Combine learning with physical activity. For example, count steps while walking or jumping.
 
 ### 3.3 Literacy Skills
 **Participants:**

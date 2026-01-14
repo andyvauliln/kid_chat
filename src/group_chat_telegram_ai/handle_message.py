@@ -45,9 +45,131 @@ DEFAULT_MODELS = [
     "mistralai/voxtral-small-24b-2507",
 ]
 
+
+def _require_env(name: str) -> str:
+    v = os.environ.get(name)
+    if not v or not v.strip():
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return v
+
+
+def _chunk_text(text: str, *, max_len: int = 3500) -> list[str]:
+    """
+    Split text into Telegram-safe chunks.
+    Telegram limit is 4096 chars; we keep margin.
+    """
+    s = (text or "").strip()
+    if not s:
+        return []
+
+    parts: list[str] = []
+    buf: list[str] = []
+    buf_len = 0
+
+    def flush() -> None:
+        nonlocal buf, buf_len
+        if not buf:
+            return
+        parts.append("\n".join(buf).rstrip())
+        buf = []
+        buf_len = 0
+
+    paragraphs = s.split("\n\n")
+    for para in paragraphs:
+        p = para.strip()
+        if not p:
+            continue
+
+        if len(p) > max_len:
+            flush()
+            lines = [ln.rstrip() for ln in p.splitlines() if ln.strip()]
+            if not lines:
+                continue
+            line_buf = ""
+            for ln in lines:
+                if not line_buf:
+                    line_buf = ln
+                    continue
+                if len(line_buf) + 1 + len(ln) <= max_len:
+                    line_buf = f"{line_buf}\n{ln}"
+                    continue
+                parts.append(line_buf)
+                line_buf = ln
+            if line_buf:
+                while len(line_buf) > max_len:
+                    parts.append(line_buf[:max_len])
+                    line_buf = line_buf[max_len:]
+                if line_buf:
+                    parts.append(line_buf)
+            continue
+
+        sep = 2 if buf else 0
+        new_len = buf_len + sep + len(p)
+        if new_len <= max_len:
+            if buf:
+                buf.append("")
+                buf_len += 2
+            buf.append(p)
+            buf_len += len(p)
+            continue
+
+        flush()
+        buf.append(p)
+        buf_len = len(p)
+
+    flush()
+    return [x for x in parts if x.strip()]
+
+
+async def send_telegram_text(*, bot_token: str, chat_id: int, text: str) -> None:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": text},
+        )
+        resp.raise_for_status()
+
+
+async def send_telegram_long_text(*, bot_token: str, chat_id: int, text: str) -> None:
+    chunks = _chunk_text(text, max_len=3500)
+    if not chunks:
+        return
+    for part in chunks:
+        await send_telegram_text(bot_token=bot_token, chat_id=chat_id, text=part)
+
+
+def get_default_model_from_env(models: list[str] | None = None) -> str:
+    """
+    Resolve the default OpenRouter model from env var `current_model_index` (1-based).
+
+    Raises RuntimeError when missing/invalid/out of range (fail fast).
+    """
+    models = models or DEFAULT_MODELS
+    raw = os.environ.get("current_model_index")
+    if not raw or not raw.strip():
+        raise RuntimeError(
+            "Missing current_model_index. Set it in environment/.env "
+            "(1-based index into DEFAULT_MODELS)."
+        )
+    try:
+        idx = int(raw.strip())
+    except Exception as e:
+        raise RuntimeError(f"Invalid current_model_index={raw!r} (must be an integer).") from e
+    if idx < 1 or idx > len(models):
+        raise RuntimeError(f"Invalid current_model_index={idx} (must be between 1 and {len(models)}).")
+    return models[idx - 1]
+
+
+def _models_to_try(model: str | None) -> list[str]:
+    if model:
+        return [model]
+    default = get_default_model_from_env(DEFAULT_MODELS)
+    rest = [m for m in DEFAULT_MODELS if m != default]
+    return [default] + rest
+
 ROUTER_PROMPT_PATH = Path(__file__).parent.parent.parent / "prompts" / "message_router.md"
 LLM_LOG_PATH = Path(__file__).parent.parent.parent / "data" / "llm_logs.jsonl"
-DAILY_REPORTS_DIR = Path(__file__).parent.parent.parent / "data" / "daily_reports"
+DAILY_REPORTS_DIR = Path(__file__).parent.parent.parent / "reports"
 
 
 def get_model_config(model_id: str) -> ModelConfig | None:
@@ -299,7 +421,7 @@ async def route_message(
     prompt = _load_router_prompt()
     user_content = json.dumps(input_data, ensure_ascii=False)
     
-    models_to_try = [model] if model else DEFAULT_MODELS
+    models_to_try = _models_to_try(model)
     
     last_error = None
     for m in models_to_try:
@@ -390,7 +512,7 @@ async def handle_telegram_message(
                 "context": ctx,
             }
             response2 = await _call_model(
-                model=result.model or (model or DEFAULT_MODELS[0]),
+                model=result.model or (model or get_default_model_from_env(DEFAULT_MODELS)),
                 api_key=api_key,
                 system=_context_prompt(),
                 user_content=json.dumps(user_payload, ensure_ascii=False),
@@ -444,7 +566,7 @@ async def handle_telegram_message(
             }
         ]
         
-        models_to_try = [model] if model else DEFAULT_MODELS
+        models_to_try = _models_to_try(model)
         last_error = None
         
         for m in models_to_try:

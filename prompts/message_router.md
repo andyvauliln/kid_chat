@@ -31,13 +31,16 @@ IMPORTANT:
   - `context_files` MUST be non-empty
   - `question_for_next_llm` MUST be a clear, specific question for the next LLM
 - If `needs_context=false`:
-  - You MAY set `response` (string) only if you can respond without file context.
+  - `context_files` MUST be `[]`
+  - `question_for_next_llm` MUST be `null`
+  - You MAY set `response` (string) only if you can respond without file context (keep it short and practical).
   - Otherwise set `response=null`.
 
 Very important (strict):
 - Set `needs_context=true` ONLY when the user is asking a question that truly requires reading existing files to answer.
 - If the message is a report, incident description, schedule notification, suggestion/idea, request to add/update something, or a general FYI, set `needs_context=false` and `response=null`.
 - Even if a suggestion contains a question like "Should we add it?", treat it as a suggestion and keep `needs_context=false` (no response).
+ - Greetings / acknowledgements / side conversations should be `needs_context=false` and `response=null`.
 
 Special case:
 - If the user asks: "Translate to Indonesian: ...", set `needs_context=false` and set `response` to the Indonesian translation.
