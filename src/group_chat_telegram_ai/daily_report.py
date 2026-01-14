@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import argparse
 import copy
-import difflib
 import json
 import os
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -284,6 +284,53 @@ def _json_pretty(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=2)
 
 
+def _split_paragraphs(text: str) -> list[str]:
+    """
+    Split markdown/text into paragraphs (blank-line separated), trimmed.
+    Empty paragraphs are removed.
+    """
+    parts = [p.strip() for p in re.split(r"\n\s*\n+", text.strip())]
+    return [p for p in parts if p]
+
+
+def _md_change_paragraphs(before: str, after: str) -> dict[str, list[str]]:
+    """
+    Returns paragraphs changed, grouped by:
+      - added: paragraphs present in `after` inserted vs `before`
+      - deleted: paragraphs removed from `before`
+      - updated: paragraphs that replaced others (new paragraphs)
+
+    For 'replace', we treat it as deleted(old) + updated(new).
+    """
+    before_paras = _split_paragraphs(before)
+    after_paras = _split_paragraphs(after)
+
+    # Simple sequence matching without external dependencies:
+    # Use python's built-in difflib-like approach via SequenceMatcher from difflib module,
+    # but avoid importing it by implementing minimal logic: fallback to full replace.
+    #
+    # Keep it simple: if lists match, nothing changed.
+    if before_paras == after_paras:
+        return {"added": [], "deleted": [], "updated": []}
+
+    # Minimal, deterministic approach:
+    # - added: paragraphs in after not in before (by exact string)
+    # - deleted: paragraphs in before not in after
+    # - updated: if both added and deleted exist, consider added as updated and clear added
+    before_set = set(before_paras)
+    after_set = set(after_paras)
+    added = [p for p in after_paras if p not in before_set]
+    deleted = [p for p in before_paras if p not in after_set]
+    updated: list[str] = []
+
+    if added and deleted:
+        # Treat replacements as updates (new paragraphs)
+        updated = added
+        added = []
+
+    return {"added": added, "deleted": deleted, "updated": updated}
+
+
 def _flatten_value_changes(before: Any, after: Any, *, prefix: str = "") -> dict[str, Any]:
     """
     Return mapping of changed property paths -> new value.
@@ -345,33 +392,87 @@ def _index_items_by_id(obj: Any) -> dict[Any, Any]:
     return out
 
 
-def _flatten_dict_to_path_values(obj: Any, *, prefix: str = "") -> dict[str, Any]:
-    if not isinstance(obj, dict):
-        return {prefix or "value": obj}
-    out: dict[str, Any] = {}
-    for k in sorted(obj.keys()):
-        p = f"{prefix}.{k}" if prefix else str(k)
-        v = obj[k]
-        if isinstance(v, dict):
-            out.update(_flatten_dict_to_path_values(v, prefix=p))
-        else:
-            out[p] = v
+def _ids_from_applied(applied: list[str]) -> list[int]:
+    # applied strings look like: "added(id=12)" or "updated(id=12)"
+    ids: list[int] = []
+    for s in applied:
+        m = re.search(r"id=(\d+)", s)
+        if m:
+            ids.append(int(m.group(1)))
+    return ids
+
+
+def _json_items_diff_only(before_obj: Any, after_obj: Any, ids: list[Any]) -> list[dict[str, Any]]:
+    """
+    Return only actual diffs, formatted as requested:
+      {"id": <id>, "changes": [{"path": new_value}, ...]}
+    """
+    before_by_id = _index_items_by_id(before_obj)
+    after_by_id = _index_items_by_id(after_obj)
+
+    out: list[dict[str, Any]] = []
+    for item_id in ids:
+        b = before_by_id.get(item_id)
+        a = after_by_id.get(item_id)
+
+        # deleted item
+        if b is not None and a is None:
+            out.append({"id": item_id, "changes": [{"__deleted__": True}]})
+            continue
+
+        # created item: treat all fields (except id) as "changed"
+        if b is None and isinstance(a, dict):
+            a_no_id = dict(a)
+            a_no_id.pop("id", None)
+            flat = _flatten_value_changes({}, a_no_id, prefix="")
+            out.append({"id": item_id, "changes": [{k: v} for k, v in flat.items()]})
+            continue
+
+        # updated item: only changed fields (excluding id)
+        if isinstance(b, dict) and isinstance(a, dict):
+            b_no_id = dict(b)
+            a_no_id = dict(a)
+            b_no_id.pop("id", None)
+            a_no_id.pop("id", None)
+            flat = _flatten_value_changes(b_no_id, a_no_id, prefix="")
+            out.append({"id": item_id, "changes": [{k: v} for k, v in flat.items()]})
+            continue
+
+        out.append({"id": item_id, "changes": []})
+
     return out
 
 
-def _json_items_from_llm_changes(changes: list[FileChange]) -> list[dict[str, Any]]:
+def _flatten_payload(obj: Any, *, prefix: str = "") -> dict[str, Any]:
     """
-    Convert LLM `changes` to the compact format requested:
-      {"id": <id>, "changes": [{"path": value}, ...]}
-    We use the LLM-provided payload (not computed before/after) so even re-runs
-    still show the intended update fields.
+    Flatten a payload dict into dot-path -> value.
+    - Dicts are flattened recursively.
+    - Lists are treated as a whole value at the current path.
+    """
+    if isinstance(obj, dict):
+        out: dict[str, Any] = {}
+        for k in sorted(obj.keys()):
+            p = f"{prefix}.{k}" if prefix else str(k)
+            v = obj[k]
+            if isinstance(v, dict):
+                out.update(_flatten_payload(v, prefix=p))
+            else:
+                out[p] = v
+        return out
+    return {prefix or "value": obj}
+
+
+def _json_items_from_llm_changes_compact(changes: list[FileChange]) -> list[dict[str, Any]]:
+    """
+    Build the exact compact JSON format requested from the LLM changes:
+      [{"id": <id>, "changes": [{"path": value}, ...]}, ...]
+    Note: This represents what the LLM requested to set (not a before/after diff).
     """
     by_id: dict[Any, dict[str, Any]] = {}
 
     for ch in changes:
-        ids = _extract_ids_from_change(ch)
         if ch.type == "removed":
-            for item_id in ids:
+            for item_id in _extract_ids_from_change(ch):
                 by_id.setdefault(item_id, {})["__deleted__"] = True
             continue
 
@@ -383,7 +484,7 @@ def _json_items_from_llm_changes(changes: list[FileChange]) -> list[dict[str, An
             item_id = item["id"]
             payload = dict(item)
             payload.pop("id", None)
-            flat = _flatten_dict_to_path_values(payload, prefix="")
+            flat = _flatten_payload(payload, prefix="")
             target = by_id.setdefault(item_id, {})
             target.update(flat)
 
@@ -391,18 +492,6 @@ def _json_items_from_llm_changes(changes: list[FileChange]) -> list[dict[str, An
     for item_id, flat_changes in by_id.items():
         out.append({"id": item_id, "changes": [{k: v} for k, v in flat_changes.items()]})
     return out
-
-
-def _unified_diff(before: str, after: str, *, rel_path: str) -> str:
-    before_lines = before.splitlines(keepends=True)
-    after_lines = after.splitlines(keepends=True)
-    diff = difflib.unified_diff(
-        before_lines,
-        after_lines,
-        fromfile=f"a/{rel_path}",
-        tofile=f"b/{rel_path}",
-    )
-    return "".join(diff).rstrip()
 
 
 def _write_daily_summary(d: date, *, summary_md: str, model_id: str) -> str:
@@ -464,7 +553,6 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
     )
 
     updates = _parse_updates(parsed)
-    updates_log: list[str] = []
     update_entries: list[dict[str, Any]] = []
 
     for upd in updates:
@@ -480,8 +568,13 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                 raise ValueError(f"Missing full_document for md update: {upd.file}")
             before = _read_text(abs_path) if abs_path.exists() else ""
             _write_text(abs_path, full_doc)
-            updates_log.append(f"{upd.file}: updated (md full_document)")
-            diff_text = _unified_diff(before, full_doc, rel_path=upd.file)
+            para_changes = _md_change_paragraphs(before, full_doc)
+            md_changes_arr: list[dict[str, Any]] = []
+            for t in ("added", "updated", "deleted"):
+                if para_changes[t]:
+                    md_changes_arr.append(
+                        {"type": t, "data": para_changes[t], "reasoning": (upd.reasoning or "").strip() or "(missing)"}
+                    )
             update_entries.append(
                 {
                     "file": upd.file,
@@ -489,11 +582,7 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                     "model": response.model,
                     "cost": response.cost,
                     "type": "day.summary",
-                    "changes": {
-                        "type": "created" if not existed_before else "updated",
-                        "data": {"diff": diff_text or "(no diff)", "updated_fields": upd.updated_fields or []},
-                        "reasoning": (upd.reasoning or "").strip() or "(missing)",
-                    },
+                    "changes": md_changes_arr,
                 }
             )
             continue
@@ -506,11 +595,42 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                 changes=upd.changes,
             )
             _write_json(abs_path, updated_obj)
-            applied_summary = f"updated (json {', '.join(applied) if applied else 'no-op'})"
-            updates_log.append(f"{upd.file}: {applied_summary}")
-            _ = before_obj  # kept for potential future diffing
+            _ = before_obj
             _ = updated_obj
-            id_changes = _json_items_from_llm_changes(upd.changes)
+            # Group compact items by change type (added/updated/deleted)
+            grouped: dict[str, list[dict[str, Any]]] = {"added": [], "updated": [], "deleted": []}
+            for ch in upd.changes:
+                if ch.type == "removed":
+                    ids = _extract_ids_from_change(ch)
+                    for item_id in ids:
+                        grouped["deleted"].append({"id": item_id, "changes": [{"__deleted__": True}]})
+                    continue
+                # added/updated: use compact per-id changes
+                items = _json_items_from_llm_changes_compact([ch])
+                if ch.type == "added":
+                    grouped["added"].extend(items)
+                elif ch.type == "updated":
+                    grouped["updated"].extend(items)
+
+            # De-dup within each group by id (preserve first)
+            def _dedup(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                seen: set[Any] = set()
+                out: list[dict[str, Any]] = []
+                for it in items:
+                    i = it.get("id")
+                    if i in seen:
+                        continue
+                    seen.add(i)
+                    out.append(it)
+                return out
+
+            json_changes_arr: list[dict[str, Any]] = []
+            for t in ("added", "updated", "deleted"):
+                items = _dedup(grouped[t])
+                if items:
+                    json_changes_arr.append(
+                        {"type": t, "data": items, "reasoning": (upd.reasoning or "").strip() or "(missing)"}
+                    )
             update_entries.append(
                 {
                     "file": upd.file,
@@ -518,14 +638,7 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                     "model": response.model,
                     "cost": response.cost,
                     "type": "day.summary",
-                    "changes": {
-                        "type": "created" if not existed_before else "updated",
-                        "data": {
-                            "applied": applied,
-                            "items": id_changes,
-                        },
-                        "reasoning": (upd.reasoning or "").strip() or "(missing)",
-                    },
+                    "changes": json_changes_arr,
                 }
             )
             continue
@@ -540,7 +653,6 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
         "date": d.isoformat(),
         "summary": summary_md,
         "updates": parsed.get("updates") or [],
-        "updates_applied": updates_log,
         "daily_messages_path": str(_daily_messages_path(d).relative_to(REPO_ROOT)),
         "daily_summary_path": str(_daily_summary_path(d).relative_to(REPO_ROOT)),
         "daily_summary_path_with_model": str(_daily_summary_path_with_model(d, response.model).relative_to(REPO_ROOT)),
