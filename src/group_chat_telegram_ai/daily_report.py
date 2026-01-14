@@ -831,6 +831,7 @@ def _write_daily_updates_log(
     _write_json(_daily_updates_path_with_model(d, model_id), update_entries)
 
 
+
 def _load_stage2_md_prompt() -> str:
     return _load_prompt(UPDATE_MD_APP_PAGE_PROMPT_PATH)
 

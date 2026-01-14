@@ -1,0 +1,29 @@
+{
+  "name": "group_chat",
+  "version": "1.0.0",
+  "description": "This repo contains:  - A minimal Telegram bot (currently **echoes**; placeholder for AI logic).  - An integration test that **sends a message to the bot and waits for the bot's reply**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "scheduler": "node scripts/report_scheduler.js",
+    "scheduler:dry": "node scripts/report_scheduler.js --dry-run",
+    "scheduler:once": "node scripts/report_scheduler.js --run-once",
+    "pm2:start": "npx pm2 start ecosystem.config.js",
+    "pm2:stop": "npx pm2 stop group_chat_bot daily_report_job weekly_report_job monthly_report_job morning_plan_job",
+    "pm2:delete": "npx pm2 delete group_chat_bot daily_report_job weekly_report_job monthly_report_job morning_plan_job",
+    "pm2:logs": "npx pm2 logs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "pm2": "^6.0.14"
+  }
+}

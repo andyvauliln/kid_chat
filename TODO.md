@@ -12,7 +12,7 @@
 [] make weekly report.
 [] make monthly report.
 [] crons for reports dayly/monthly/weekly/morning
-[] commands in telegram for /make_dayly_report /translate_last_message_to_ind /show_last_udpates /show_last_day_report /show_last_week_report /show_last_month_report /show_day_report {date} /show_last_morning_file
+[] commands in telegram for /make_dayly_report /translate_last_message_to_ind /show_last_udpates /show_last_day_report /show_last_week_report /show_last_month_report /show_report_on_date {date} /show_last_morning_plan /show_morning_plan
 [] for morning plan send only todo that need to make.
 [] check how it add video to the list
 [] check how it manage todo 
