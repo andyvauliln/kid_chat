@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import difflib
 import json
 import os
 import re
@@ -74,6 +75,7 @@ def _daily_prompt() -> str:
         "- For format=md: include exactly one change with type=updated and a full_document.\n"
         "- For format=json: do NOT include full_document. Use changes with type added/removed/updated and put the structured object(s) in `data`.\n"
         "- Always include `reasoning` and `updated_fields` for every item in updates.\n"
+        "- `reasoning` must explicitly cite the message(s) that triggered the update (quote short fragments).\n"
         "- Do not output updates for files that should not change.\n"
     )
 
@@ -293,6 +295,77 @@ def _split_paragraphs(text: str) -> list[str]:
     return [p for p in parts if p]
 
 
+def _normalize_md_log_lines(items: list[str]) -> list[str]:
+    """
+    Convert multi-line markdown snippets into a nice JSON-friendly array of lines.
+    - Splits on newlines
+    - Trims whitespace
+    - Drops empty lines
+    """
+    out: list[str] = []
+    for item in items:
+        for line in str(item).splitlines():
+            s = line.strip()
+            if s:
+                out.append(s)
+    return out
+
+
+def _nearest_heading(lines: list[str], idx: int) -> str:
+    """
+    Return the nearest markdown heading line at or above idx.
+    """
+    i = min(max(idx, 0), len(lines) - 1) if lines else 0
+    for j in range(i, -1, -1):
+        s = lines[j].strip()
+        if s.startswith("#"):
+            return s
+    return ""
+
+
+def _md_line_changes(before: str, after: str) -> dict[str, list[dict[str, str]]]:
+    """
+    Produce minimal markdown changes as line items:
+      {"added":[{title,text}], "deleted":[{title,text}], "updated":[{title,text}]}
+
+    - We treat "replace" as deleted(old) + updated(new)
+    - We ignore empty lines.
+    """
+    before_lines = [ln.rstrip() for ln in before.splitlines()]
+    after_lines = [ln.rstrip() for ln in after.splitlines()]
+
+    sm = difflib.SequenceMatcher(a=before_lines, b=after_lines)
+    added: list[dict[str, str]] = []
+    deleted: list[dict[str, str]] = []
+    updated: list[dict[str, str]] = []
+
+    def _emit(target: list[dict[str, str]], lines: list[str], i: int, title: str) -> None:
+        text = lines[i].strip()
+        if not text:
+            return
+        target.append({"title": title, "text": text})
+
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        if tag == "insert":
+            for j in range(j1, j2):
+                _emit(added, after_lines, j, _nearest_heading(after_lines, j))
+            continue
+        if tag == "delete":
+            for i in range(i1, i2):
+                _emit(deleted, before_lines, i, _nearest_heading(before_lines, i))
+            continue
+        if tag == "replace":
+            for i in range(i1, i2):
+                _emit(deleted, before_lines, i, _nearest_heading(before_lines, i))
+            for j in range(j1, j2):
+                _emit(updated, after_lines, j, _nearest_heading(after_lines, j))
+            continue
+
+    return {"added": added, "deleted": deleted, "updated": updated}
+
+
 def _extract_md_snippets(full_doc: str, updated_fields: list[str] | None) -> list[str]:
     """
     Best-effort extraction of "what changed" snippets for markdown when a re-run
@@ -389,6 +462,50 @@ def _extract_md_snippets_from_reasoning(full_doc: str, reasoning: str | None) ->
             scored.append((score, p))
     scored.sort(key=lambda x: (-x[0], len(x[1])))
     return [p for _, p in scored[:5]]
+
+
+def _extract_md_relevant_lines(full_doc: str, reasoning: str | None) -> list[tuple[int, str]]:
+    """
+    Pick the most relevant *single lines* from full_doc based on reasoning text.
+    Prefers bullet lines and lines containing numbers.
+    Returns (line_index, line_text).
+    """
+    r = (reasoning or "").strip().lower()
+    if not r:
+        return []
+
+    keywords = [w for w in re.findall(r"[a-z0-9]+", r) if len(w) >= 4]
+    keywords = list(dict.fromkeys(keywords))[:12]
+
+    full_lines = [ln.rstrip("\n") for ln in full_doc.splitlines()]
+    scored: list[tuple[int, int, int, str]] = []
+    # score tuple: (score, is_bullet, has_number, idx, text)
+    for idx, ln in enumerate(full_lines):
+        s = ln.strip()
+        if not s:
+            continue
+        sl = s.lower()
+        score = sum(1 for k in keywords if k in sl)
+        if score == 0:
+            continue
+        is_bullet = 1 if s.startswith(("-", "*")) else 0
+        has_number = 1 if re.search(r"\d", s) else 0
+        # Keep logs minimal: only bullets (or numeric lines).
+        if not is_bullet and not has_number:
+            continue
+        scored.append((score, is_bullet, has_number, idx, s))
+
+    scored.sort(key=lambda x: (-x[0], -x[1], -x[2], x[3]))
+    out: list[tuple[int, str]] = []
+    seen_text: set[str] = set()
+    for _, _, _, idx, s in scored:
+        if s in seen_text:
+            continue
+        seen_text.add(s)
+        out.append((idx, s))
+        if len(out) >= 3:
+            break
+    return out
 
 def _md_change_paragraphs(before: str, after: str) -> dict[str, list[str]]:
     """
@@ -663,23 +780,51 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
                 raise ValueError(f"Missing full_document for md update: {upd.file}")
             before = _read_text(abs_path) if abs_path.exists() else ""
             _write_text(abs_path, full_doc)
-            para_changes = _md_change_paragraphs(before, full_doc)
+            line_changes = _md_line_changes(before, full_doc)
 
-            # If this is a re-run and there is no textual diff, still record the
-            # relevant updated snippet(s) from the LLM output.
-            if not para_changes["added"] and not para_changes["updated"] and not para_changes["deleted"]:
-                fallback = _extract_md_snippets(full_doc, upd.updated_fields)
-                if not fallback:
-                    fallback = _extract_md_snippets_from_reasoning(full_doc, upd.reasoning)
-                if fallback:
-                    para_changes["updated"] = fallback
+            # Re-run fallback: if no actual diffs, still log the relevant lines (as updated)
+            if not line_changes["added"] and not line_changes["updated"] and not line_changes["deleted"]:
+                doc_lines = [ln.rstrip("\n") for ln in full_doc.splitlines()]
+
+                # Best signal: pick the most relevant bullet/sentence lines from reasoning
+                picked = _extract_md_relevant_lines(full_doc, upd.reasoning)
+                if picked:
+                    line_changes["updated"] = [
+                        {"title": _nearest_heading(doc_lines, idx), "text": txt} for idx, txt in picked
+                    ]
+                else:
+                    # Fallback: extract from updated_fields blocks, but only keep meaningful lines
+                    fallback_blocks = _extract_md_snippets(full_doc, upd.updated_fields)
+                    if not fallback_blocks:
+                        fallback_blocks = _extract_md_snippets_from_reasoning(full_doc, upd.reasoning)
+                    fallback_lines = _normalize_md_log_lines(fallback_blocks)
+                    # Keep only bullet lines if any exist; otherwise keep first 3 lines
+                    bullets = [ln for ln in fallback_lines if ln.startswith(("-", "*"))]
+                    chosen = bullets[:8] if bullets else fallback_lines[:3]
+
+                    # Reduce noise: keep only lines that match reasoning keywords (if any)
+                    r = (upd.reasoning or "").lower()
+                    keys = [w for w in re.findall(r"[a-z0-9]+", r) if len(w) >= 4]
+                    keys = list(dict.fromkeys(keys))[:12]
+                    if keys:
+                        chosen2 = [ln for ln in chosen if any(k in ln.lower() for k in keys)]
+                        # If nothing matched (rare), fall back to the first bullet
+                        chosen = chosen2 if chosen2 else (bullets[:1] if bullets else chosen[:1])
+
+                    if chosen:
+                        # attach the section heading if possible (use first heading in doc)
+                        default_title = next((ln.strip() for ln in doc_lines if ln.strip().startswith("#")), "")
+                        line_changes["updated"] = [{"title": default_title, "text": ln} for ln in chosen]
 
             md_changes_arr: list[dict[str, Any]] = []
+            reason = (upd.reasoning or "").strip() or "(missing)"
             for t in ("added", "updated", "deleted"):
-                if para_changes[t]:
-                    md_changes_arr.append(
-                        {"type": t, "data": para_changes[t], "reasoning": (upd.reasoning or "").strip() or "(missing)"}
-                    )
+                items = line_changes[t]
+                if not items:
+                    continue
+                # Put reasoning on every item (as requested)
+                data = [{"title": it.get("title", ""), "text": it.get("text", ""), "reasoning": reason} for it in items]
+                md_changes_arr.append({"type": t, "data": data})
             update_entries.append(
                 {
                     "file": upd.file,
@@ -733,9 +878,12 @@ async def run_daily_report(d: date, model: str | None = None, api_key: str | Non
             for t in ("added", "updated", "deleted"):
                 items = _dedup(grouped[t])
                 if items:
-                    json_changes_arr.append(
-                        {"type": t, "data": items, "reasoning": (upd.reasoning or "").strip() or "(missing)"}
-                    )
+                    reason = (upd.reasoning or "").strip() or "(missing)"
+                    # Put reasoning on every item (as requested)
+                    data = []
+                    for it in items:
+                        data.append({"id": it.get("id"), "changes": it.get("changes") or [], "reasoning": reason})
+                    json_changes_arr.append({"type": t, "data": data})
             update_entries.append(
                 {
                     "file": upd.file,
