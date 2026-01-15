@@ -187,9 +187,18 @@ async def _send_file_content(update: Update, file_path: str) -> None:
 
 def _build_file_content_text(file_path: str) -> str:
     abs_path = REPO_ROOT / file_path
-    content = abs_path.read_text(encoding="utf-8") if abs_path.exists() else "(missing file)"
+    if not abs_path.exists():
+        content = "(missing file)"
+    else:
+        content = abs_path.read_text(encoding="utf-8")
+        if not content.strip():
+            content = "(empty file)"
     header = f"FILE: {file_path}"
     return f"{header}\n\n{content}"
+
+
+def _current_file_header(user: str, file_path: str) -> str:
+    return f"Onboarding for {_display_username(user)}. Current file: {file_path}"
 
 
 def _get_onboarding_chat_id() -> int | None:
@@ -394,6 +403,7 @@ async def onboarding_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if current_file:
         _ensure_sent(approvals, current_user, current_file)
         _write_approvals(approvals)
+        await _send_text(update, _current_file_header(current_user, current_file))
         await _send_file_content(update, current_file)
 
     text = (update.message.text or "").strip()
@@ -413,9 +423,10 @@ async def onboarding_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await _send_text(update, f"All files approved for {_display_username(current_user)}.")
             return
 
-        await _send_text(update, f"Approved: {current_file}")
+        await _send_text(update, f"Approved by {_display_username(current_user)}: {current_file}")
         _ensure_sent(approvals, current_user, next_file)
         _write_approvals(approvals)
+        await _send_text(update, _current_file_header(current_user, next_file))
         await _send_file_content(update, next_file)
         return
 
@@ -494,12 +505,12 @@ def build_application(bot_token: str) -> Application:
                     text=f"All files approved for {_display_username(current_user)}.",
                 )
                 return
-            header = f"Onboarding start. Current file: {current_file}"
             await send_telegram_long_text(
                 bot_token=bot_token,
                 chat_id=chat_id,
-                text=f"{header}\n\n{_build_file_content_text(current_file)}",
+                text=_current_file_header(current_user, current_file),
             )
+            await _send_file_content_to_chat(bot_token, chat_id, current_file)
 
         app.post_init = _announce
     return app
