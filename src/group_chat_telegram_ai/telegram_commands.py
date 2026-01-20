@@ -10,8 +10,10 @@ from typing import Iterable
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+from .agent_command import build_agent_handlers, build_agent_reply_handler
 from .daily_report import run_daily_report
 from .handle_message import DEFAULT_MODELS, _call_model, get_default_model_from_env, send_telegram_long_text
+from .pending_updates import approve_pending_update, list_pending_updates, reject_pending_update
 from .update_engine import run_update_agent
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -211,12 +213,86 @@ async def udpate_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not updates:
         await _send_text(update, "No files selected for update.")
         return
-    lines = [f"updated: {u.update.file}" for u in updates]
+    lines: list[str] = []
+    for u in updates:
+        if u.pending_update_id:
+            lines.append(f"queued (Not Approved): {u.update.file} id={u.pending_update_id}")
+        else:
+            lines.append(f"updated: {u.update.file}")
     await _send_text(update, "\n".join(lines).strip())
 
 
+async def pending_updates_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    items = list_pending_updates(status="not_approved")
+    if not items:
+        await _send_text(update, "No pending updates.")
+        return
+    lines: list[str] = ["Pending updates (Not Approved):"]
+    for it in items[:30]:
+        lines.append(
+            f"- id={it.get('id')} file={it.get('file')} source={it.get('source')} created_at={it.get('created_at')}"
+        )
+    if len(items) > 30:
+        lines.append(f"... and {len(items) - 30} more")
+    await _send_text(update, "\n".join(lines).strip())
+
+
+async def approve_update_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        await _send_text(update, "Usage: /approve_update <id>")
+        return
+    update_id = str(context.args[0]).strip()
+    res = approve_pending_update(update_id)
+    if not res:
+        await _send_text(update, f"Not found or not approvable: {update_id}")
+        return
+    await _send_text(update, f"Approved + applied: {res.entry.get('file')} id={update_id}")
+
+
+async def approve_all_updates_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    items = list_pending_updates(status="not_approved")
+    if not items:
+        await _send_text(update, "No pending updates.")
+        return
+    applied: list[str] = []
+    failed: list[str] = []
+    for it in items:
+        uid = str(it.get("id") or "")
+        if not uid:
+            continue
+        res = approve_pending_update(uid)
+        if res:
+            applied.append(f"{res.entry.get('file')} id={uid}")
+        else:
+            failed.append(uid)
+    lines: list[str] = []
+    if applied:
+        lines.append("Approved + applied:")
+        lines.extend([f"- {x}" for x in applied[:30]])
+        if len(applied) > 30:
+            lines.append(f"... and {len(applied) - 30} more")
+    if failed:
+        lines.append("Failed:")
+        lines.extend([f"- id={x}" for x in failed[:30]])
+        if len(failed) > 30:
+            lines.append(f"... and {len(failed) - 30} more")
+    await _send_text(update, "\n".join(lines).strip() or "(no changes)")
+
+
+async def reject_update_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        await _send_text(update, "Usage: /reject_update <id>")
+        return
+    update_id = str(context.args[0]).strip()
+    res = reject_pending_update(update_id)
+    if not res:
+        await _send_text(update, f"Not found: {update_id}")
+        return
+    await _send_text(update, f"Rejected: {res.get('file')} id={update_id}")
+
+
 def build_command_handlers() -> list[CommandHandler]:
-    return [
+    handlers = [
         CommandHandler("make_dayly_report", make_dayly_report_command),
         CommandHandler("translate_last_message_to_ind", translate_last_message_to_ind_command),
         CommandHandler("show_last_udpates", show_last_updates_command),
@@ -229,9 +305,18 @@ def build_command_handlers() -> list[CommandHandler]:
         CommandHandler("show_morning_plan", show_morning_plan_command),
         CommandHandler("udpate", udpate_command),
         CommandHandler("update", udpate_command),
+        CommandHandler("pending_updates", pending_updates_command),
+        CommandHandler("approve_update", approve_update_command),
+        CommandHandler("approve_all_updates", approve_all_updates_command),
+        CommandHandler("reject_update", reject_update_command),
     ]
+    # Add agent command handlers
+    handlers.extend(build_agent_handlers())
+    return handlers
 
 
 def register_command_handlers(app: Application) -> None:
     for handler in build_command_handlers():
         app.add_handler(handler)
+    # Add agent reply handler (for session continuity)
+    app.add_handler(build_agent_reply_handler())

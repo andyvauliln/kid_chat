@@ -1,3 +1,16 @@
+# Behavioral Data
+
+## Purpose
+Describe Dante’s behavioral patterns, triggers, common challenges, and practical management strategies for caregivers.
+
+## Structure
+- Behavioral Patterns
+- Authority and Response Patterns
+- Social Interactions
+- Current Problems and Challenges
+- Current Strategy and Approach
+- Notes / TODO
+
 ### 2.2 Behavioral Patterns
 - **Positive Behaviors:**
   - Generally kind disposition
@@ -119,3 +132,11 @@ Every day, ask Dante:
 - What new thing did you learn or find out today?
 - How many times did you try before something worked (or didn't work)?
 - Were you kind to your body by eating healthy foods today?
+
+
+---
+
+## 6. Notes / TODO
+- Confirm the top 3 triggers from real-life logs (transitions / “no” / overstimulation) and keep updating.
+- Add “calm-down kit” ideas (breathing, water, hug, quiet corner, simple choice).
+- Add a short “transition script” (what adults say before leaving playground / switching activities).

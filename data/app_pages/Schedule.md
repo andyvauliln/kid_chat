@@ -1,3 +1,21 @@
+# Schedule
+
+## Purpose
+Define weekly schedule structure and responsibilities (weekday, Saturday, Sunday).
+
+## Structure
+- Schedule Overview
+  - Monday - Friday Structure
+  - Saturday Structure (Hirja)
+  - Sunday Structure (Andrei)
+
+---
+
+## Scheduling rules (baseline)
+- If plans change: inform group chat early and keep changes consistent across adults.
+- Use the schedule as a **default**; one-off exceptions are okay but must be communicated.
+- After any special outing: report what was done and how Dante handled it.
+
 ## 8. Schedule Overview
 
 ### 8.1 Monday - Friday Structure

@@ -1,3 +1,10 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/daily_report.py` → `DAILY_REPORT_UPDATES_CONTEXT_PROMPT_PATH`
+- `src/group_chat_telegram_ai/update_engine.py` → `UPDATES_CONTEXT_PROMPT_PATH`
+Purpose (meta): Shared guidance for how the LLM should use `updates_context` (tracked files + structures) when planning/updating.
+-->
+
 You will receive an `updates_context` object that describes:
 - tracked app files (markdown + json)
 - prompts available in this repo
@@ -13,3 +20,4 @@ Rules:
 - Do not invent new files.
 - Do not invent new sections/keys unless the day messages clearly require it.
 - When referencing structure, prefer existing headings/keys from `updates_context.file_structures`.
+- All changes are Not Approved until explicitly accepted; treat updates as proposals.

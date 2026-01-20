@@ -22,6 +22,7 @@ from .handle_message import (
     get_default_model_from_env,
     send_telegram_long_text,
 )
+from .pending_updates import approve_pending_update
 from .update_engine import UpdateResult, run_update_for_file
 
 
@@ -34,6 +35,7 @@ ONBOARDING_ROUTER_PROMPT_PATH = REPO_ROOT / "prompts" / "onboarding_router.md"
 
 USER_ORDER = ["JohnnyPitt", "katanyanyanya", "hirja"]
 STOP_WORDS = {"done", "all approved"}
+APPLY_WORDS = {"apply", "approve", "accept"}
 
 
 @dataclass
@@ -152,6 +154,18 @@ def _is_stop_word(text: str) -> bool:
 
 def _history_map(context: ContextTypes.DEFAULT_TYPE) -> dict[str, list[str]]:
     return context.application.bot_data.setdefault("onboarding_history", {})
+
+
+def _pending_update_map(context: ContextTypes.DEFAULT_TYPE) -> dict[str, str]:
+    return context.application.bot_data.setdefault("onboarding_pending_update_id", {})
+
+
+def _set_last_pending_update_id(context: ContextTypes.DEFAULT_TYPE, user: str, pending_id: str) -> None:
+    _pending_update_map(context)[_normalize_username(user)] = pending_id
+
+
+def _get_last_pending_update_id(context: ContextTypes.DEFAULT_TYPE, user: str) -> str | None:
+    return _pending_update_map(context).get(_normalize_username(user))
 
 
 def _append_history(context: ContextTypes.DEFAULT_TYPE, user: str, message_en: str) -> None:
@@ -430,6 +444,19 @@ async def onboarding_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await _send_file_content(update, next_file)
         return
 
+    if text and text.strip().lower() in APPLY_WORDS:
+        pending_id = _get_last_pending_update_id(context, current_user)
+        if not pending_id:
+            await _send_text(update, "No pending update to apply.")
+            return
+        res = approve_pending_update(pending_id)
+        if not res:
+            await _send_text(update, f"Pending update not found or not approvable: {pending_id}")
+            return
+        await _send_text(update, f"Approved + applied: {res.entry.get('file')} id={pending_id}")
+        await _send_file_content(update, str(res.entry.get("file") or ""))
+        return
+
     router_out: RouterOutput | None = None
     if voice:
         bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -468,16 +495,28 @@ async def onboarding_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if update_result:
         summary_lines = _format_update_summary(update_result)
         if summary_lines:
-            parts.append("Updated:")
+            if update_result.pending_update_id:
+                parts.append(f"Update queued (Not Approved). id={update_result.pending_update_id}")
+            else:
+                parts.append("Updated:")
             parts.extend([f"- {ln}" for ln in summary_lines])
         else:
-            parts.append("Updated: file changes applied.")
+            if update_result.pending_update_id:
+                parts.append(f"Update queued (Not Approved). id={update_result.pending_update_id}")
+            else:
+                parts.append("Updated: file changes applied.")
     parts.append(_plan_summary(approvals, current_user, files))
+
+    if update_result and update_result.pending_update_id:
+        _set_last_pending_update_id(context, current_user, update_result.pending_update_id)
 
     await _send_text(update, "\n".join(parts).strip())
 
     if update_result:
-        await _send_file_content(update, update_result.update.file)
+        if update_result.pending_update_id:
+            await _send_text(update, f"PROPOSED FILE: {update_result.update.file}\n\n{update_result.updated_content}".strip())
+        else:
+            await _send_file_content(update, update_result.update.file)
 
 
 def build_application(bot_token: str) -> Application:

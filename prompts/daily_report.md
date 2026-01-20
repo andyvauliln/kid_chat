@@ -1,3 +1,9 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/daily_report.py` → `DAILY_REPORT_PROMPT_PATH` (legacy/alternate stage that outputs summary + updates)
+Purpose (meta): Produce a day summary and propose concrete file updates (md via full_document; json via change operations).
+-->
+
 You are preparing a daily update run.
 You will receive:
 - the daily report messages for the day

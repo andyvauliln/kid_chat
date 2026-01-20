@@ -1,3 +1,10 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/daily_report.py` → `UPDATE_JSON_APP_DATA_PROMPT_PATH`
+- `src/group_chat_telegram_ai/update_engine.py` → `UPDATE_JSON_APP_DATA_PROMPT_PATH`
+Purpose (meta): Stage 2 prompt to update ONE JSON app data file via change operations (no full_document).
+-->
+
 You are updating ONE JSON app data file (STAGE 2).
 
 You will receive:
@@ -11,6 +18,7 @@ You will receive:
 
 Your job:
 - Update ONLY the `target_file` data using structured change operations.
+- Treat your output as a proposed change (Not Approved until explicitly accepted).
 - Output JSON only (no markdown).
 
 Output schema (single object, NOT wrapped in a list):

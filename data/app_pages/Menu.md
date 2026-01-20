@@ -1,7 +1,32 @@
+# Menu
+
+## Purpose
+Food rules and weekly menu planning for Dante (what to avoid, daily targets, safety, and weekly options).
+
+## Structure
+- Status note / confirmations
+- NEVER (do not give him)
+- Likes / Dislikes (confirmation needed)
+- Daily targets
+- Sweets / candy rules
+- Nutrition overview (norms & safety)
+- Food options (quick notes)
+- Weekly menu (Mon–Sun) + daily checklist
+
 ## **Dante Food Menu -**
 
 ### Status note
 - Items marked **(NOT CONFIRMED — check with everyone)** should be agreed by **Papa + Vanya + Hirja**.
+
+## Health / allergies (fill in)
+- **Allergies:** (TBD)
+- **Foods to avoid for medical reasons:** (TBD)
+- If any new reaction happens: report immediately and update this section.
+
+## Meal behavior rules (baseline)
+- Keep mealtime calm and short; avoid power struggles.
+- Vegetables: tiny portions count; use mixing/hidden-veg strategies; praise attempts.
+- If he refuses: offer one simple alternative (still healthy), not unlimited options.
 
 ## NEVER (do not give him)
 - **Instant noodles** (including “cup noodles”, “mie instan”, spicy ramen packs).

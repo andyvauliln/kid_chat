@@ -1,3 +1,29 @@
+# Education
+
+## Purpose
+Track Dante’s educational goals, current status, and practical routines/resources for caregivers.
+
+## Structure
+- Educational Goals and Current Status
+  - Language Development
+  - Numeracy Skills
+  - Literacy Skills
+  - Time Concepts
+
+---
+
+## 1. Teaching Principles (baseline)
+- **Short sessions**: 5–15 minutes, multiple times/day.
+- **Play first**: toys, roleplay, movement, games.
+- **One goal at a time**: keep tasks tiny and finish with success.
+- **Repeat daily**: repetition builds mastery faster than “long lessons”.
+
+## 2. How to run a learning session (template)
+- **Start** (30 seconds): “Today we practice X for 5 minutes.”
+- **Do** (3–10 minutes): tiny steps + praise effort.
+- **Test** (1–2 minutes): quick check (1–3 questions).
+- **Stop**: end before frustration; reward with play/connection.
+
 ## 3. Educational Goals and Current Status
 
 ### 3.1 Language Development

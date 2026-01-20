@@ -1,3 +1,10 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/daily_report.py` → `UPDATE_DANTE_TOPICS_JSON_PROMPT_PATH`
+- `src/group_chat_telegram_ai/update_engine.py` → `UPDATE_DANTE_TOPICS_JSON_PROMPT_PATH`
+Purpose (meta): Specialized Stage 2 rules for updating `data/app_json/dante_topics_to_discuss.json`.
+-->
+
 You are updating ONE JSON app data file: `data/app_json/dante_topics_to_discuss.json` (STAGE 2).
 
 Scope:

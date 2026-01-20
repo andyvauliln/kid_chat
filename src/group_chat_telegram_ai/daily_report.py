@@ -894,6 +894,7 @@ def _apply_file_update_and_build_log_entry(
     upd: FileUpdate,
     model_id: str,
     cost: float,
+    apply: bool = True,
 ) -> dict[str, Any]:
     abs_path = REPO_ROOT / upd.file
 
@@ -907,7 +908,8 @@ def _apply_file_update_and_build_log_entry(
             raise ValueError(f"Missing full_document for md update: {upd.file}")
 
         before = _read_text(abs_path) if abs_path.exists() else ""
-        _write_text(abs_path, full_doc)
+        if apply:
+            _write_text(abs_path, full_doc)
         line_changes = _md_line_changes(before, full_doc)
 
         # Re-run fallback: if no actual diffs, still log relevant lines (as updated)
@@ -953,15 +955,25 @@ def _apply_file_update_and_build_log_entry(
             "cost": cost,
             "type": "day.summary",
             "changes": md_changes_arr,
+            "applied": bool(apply),
+            "approval_status": "approved" if apply else "not_approved",
         }
 
     if upd.format == "json":
         current = _read_json(abs_path) if abs_path.exists() else []
-        updated_obj, _ = apply_json_changes(
-            current=current,
-            changes=upd.changes,
-        )
-        _write_json(abs_path, updated_obj)
+        if apply:
+            updated_obj, _ = apply_json_changes(
+                current=current,
+                changes=upd.changes,
+            )
+            _write_json(abs_path, updated_obj)
+        else:
+            # Avoid mutating the in-memory object when not applying.
+            current_copy = json.loads(json.dumps(current, ensure_ascii=False))
+            updated_obj, _ = apply_json_changes(
+                current=current_copy,
+                changes=upd.changes,
+            )
 
         grouped: dict[str, list[dict[str, Any]]] = {"added": [], "updated": [], "deleted": []}
         for ch in upd.changes:
@@ -1003,6 +1015,8 @@ def _apply_file_update_and_build_log_entry(
             "cost": cost,
             "type": "day.summary",
             "changes": json_changes_arr,
+            "applied": bool(apply),
+            "approval_status": "approved" if apply else "not_approved",
         }
 
     raise ValueError(f"Unknown format: {upd.format} for {upd.file}")
@@ -1014,6 +1028,7 @@ async def run_daily_report(
     api_key: str | None = None,
     *,
     send: bool = True,
+    apply_updates: bool = False,
 ) -> dict[str, Any]:
     api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
@@ -1113,7 +1128,25 @@ async def run_daily_report(
         )
 
         upd = _parse_single_update(parsed_update)
-        entry = _apply_file_update_and_build_log_entry(d, upd=upd, model_id=response2.model, cost=response2.cost)
+        entry = _apply_file_update_and_build_log_entry(
+            d,
+            upd=upd,
+            model_id=response2.model,
+            cost=response2.cost,
+            apply=bool(apply_updates),
+        )
+        if not apply_updates:
+            from .pending_updates import add_pending_update
+
+            pending = add_pending_update(
+                update_obj=parsed_update,
+                log_entry=entry,
+                source="daily_report",
+                requested_by="system",
+                model=response2.model,
+                cost=response2.cost,
+            )
+            entry["pending_update_id"] = pending.get("id")
         update_entries.append(entry)
         updates_out.append(parsed_update)
 

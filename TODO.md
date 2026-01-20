@@ -17,9 +17,10 @@
 [] check how it add video to the list
 [] check how it manage todo 
 [] check how it manage topics list 
-
 [] deploy
 [] Self reflection by prompt
+
+[] make
 
 LATER:
 

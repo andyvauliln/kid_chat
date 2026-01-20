@@ -1,3 +1,10 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/daily_report.py` → `UPDATE_EDUCATION_MD_PROMPT_PATH`
+- `src/group_chat_telegram_ai/update_engine.py` → `UPDATE_EDUCATION_MD_PROMPT_PATH`
+Purpose (meta): Specialized Stage 2 rules for updating `data/app_pages/Education.md`.
+-->
+
 You are updating ONE markdown app page file: `data/app_pages/Education.md` (STAGE 2).
 
 Scope:

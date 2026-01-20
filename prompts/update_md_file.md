@@ -1,3 +1,9 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/update_engine.py` → `UPDATE_MD_FILE_PROMPT_PATH`
+Purpose (meta): Stage 2 prompt to update ONE non-app markdown file by returning full_document JSON.
+-->
+
 You are updating ONE markdown file (STAGE 2).
 
 You will receive:
@@ -13,6 +19,7 @@ Your job:
 - Update ONLY the `target_file` markdown content.
 - Keep the file style consistent.
 - Prefer editing existing sections/headings. Add a new section ONLY if the message requires it.
+- Treat your output as a proposed change (Not Approved until explicitly accepted).
 - Output JSON only (no markdown outside JSON).
 
 Output schema (single object, NOT wrapped in a list):

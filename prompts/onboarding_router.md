@@ -1,3 +1,9 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/onboarding_bot.py` → `ONBOARDING_ROUTER_PROMPT_PATH`
+Purpose (meta): During onboarding review, classify message intent and decide whether file context is needed (no file edits).
+-->
+
 You receive a user message from Telegram (text or audio) during onboarding review.
 
 Your job:

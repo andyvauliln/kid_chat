@@ -1,3 +1,9 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/handle_message.py` → `ROUTER_PROMPT_PATH` (loaded by `_load_router_prompt()`)
+Purpose (meta): Decide whether a message needs file context (and which files) and whether the bot should respond now.
+-->
+
 # Message Router AI
 
 You receive a user message from Telegram group chat (text or audio). Your job is to:

@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from . import daily_report as dr
 from .handle_message import _append_llm_log, _call_model, get_default_model_from_env
+from .pending_updates import add_pending_update
 
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -38,6 +39,7 @@ class UpdateResult:
     updated_content: str
     model: str
     cost: float
+    pending_update_id: str | None = None
 
 
 def _load_prompt(path: Path) -> str:
@@ -151,6 +153,7 @@ async def run_update_for_file(
     updated_fields: list[str] | None = None,
     model: str | None = None,
     api_key: str | None = None,
+    auto_apply: bool = False,
 ) -> UpdateResult:
     api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
@@ -192,8 +195,38 @@ async def run_update_for_file(
         upd=update,
         model_id=response.model,
         cost=response.cost,
+        apply=bool(auto_apply),
     )
-    updated_content = _read_current_file_content(target_file)
+
+    pending_id: str | None = None
+    if auto_apply:
+        updated_content = _read_current_file_content(target_file)
+    else:
+        # Store as Not Approved until explicitly accepted.
+        pending = add_pending_update(
+            update_obj=parsed,
+            log_entry=log_entry,
+            source="update_engine",
+            requested_by=user_message.strip()[:200],
+            model=response.model,
+            cost=response.cost,
+        )
+        pending_id = str(pending.get("id") or "") or None
+
+        if update.format == "md":
+            full_doc = None
+            for c in update.changes:
+                if c.full_document:
+                    full_doc = c.full_document
+                    break
+            updated_content = full_doc or ""
+        else:
+            # For json, build the proposed updated document text.
+            abs_path = REPO_ROOT / target_file
+            current = dr._read_json(abs_path) if abs_path.exists() else []
+            current_copy = json.loads(json.dumps(current, ensure_ascii=False))
+            updated_obj, _ = dr.apply_json_changes(current=current_copy, changes=update.changes)
+            updated_content = json.dumps(updated_obj, ensure_ascii=False, indent=2) + "\n"
 
     _append_llm_log(
         model=response.model,
@@ -209,6 +242,7 @@ async def run_update_for_file(
         updated_content=updated_content,
         model=response.model,
         cost=response.cost,
+        pending_update_id=pending_id,
     )
 
 

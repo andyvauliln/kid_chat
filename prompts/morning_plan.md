@@ -1,3 +1,9 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/morning_plan.py` → `MORNING_PLAN_PROMPT_PATH`
+Purpose (meta): Generate one structured “morning plan” message in JSON using current context files.
+-->
+
 You are preparing a morning plan for Dante (a 3.5–4.8 year old child).
 
 You will receive a JSON payload that includes:

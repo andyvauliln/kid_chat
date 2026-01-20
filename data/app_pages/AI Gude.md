@@ -1,5 +1,17 @@
 # 🌟 Welcome to Dante's AI Assistant!
 
+## Purpose
+Help caregivers understand how to use the bot (onboarding, daily usage, and how to request updates).
+
+## Structure
+- Part 1: Getting Started (Onboarding)
+- Part 2: How to Use the Bot Daily
+  - Ask Questions
+  - Give Updates
+  - Change the Rules
+- Quick Tips for Success
+- Knowledge base (what pages exist)
+
 This bot is here to help us all take care of Dante. It holds all the important information about his food, his school, his schedule, and how he likes to play and learn. Think of it as a shared notebook that can talk back to you!
 
 ---
@@ -47,3 +59,14 @@ If you want to permanently change a rule or a piece of information, just ask the
 *   **Shared Knowledge:** Remember, what you tell the bot helps everyone else who takes care of Dante too.
 
 If you ever get stuck, just ask the bot: *"How do I use you?"* and it will help you out!
+
+---
+
+## 📚 Knowledge Base (What the bot reads)
+The bot uses these pages as its “source of truth”:
+- `data/app_pages/Dante Summary File.md` — overview (health/safety/routine/coordination + basics)
+- `data/app_pages/Menu.md` — food rules + weekly menu
+- `data/app_pages/Schedule.md` — weekly routine structure
+- `data/app_pages/Education.md` — learning plan and resources
+- `data/app_pages/Behavioral Data.md` — behavior patterns + discipline approach
+- `data/app_pages/Andrei.md`, `data/app_pages/Vanya.md`, `data/app_pages/Hirja.md` — caregiver roles and coordination

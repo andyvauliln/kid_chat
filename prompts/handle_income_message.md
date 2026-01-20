@@ -1,3 +1,9 @@
+<!--
+Used by:
+- (currently not referenced from `src/` — reserved prompt; safe to delete only if confirmed unused)
+Purpose (meta): Normalize an incoming Telegram message (audio/text) into English + a simple message type classification.
+-->
+
 ## Goal
 You receive a single user message (either text or audio) and must produce a normalized, English-only representation suitable for downstream logic.
 

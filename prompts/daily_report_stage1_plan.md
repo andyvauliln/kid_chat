@@ -1,3 +1,9 @@
+<!--
+Used by:
+- `src/group_chat_telegram_ai/daily_report.py` → `DAILY_REPORT_STAGE1_PROMPT_PATH` (Stage 1 planning prompt)
+Purpose (meta): Produce a day summary + a list of files to update (planning only; no file content edits).
+-->
+
 You are preparing a daily update run (STAGE 1: planning only).
 
 You will receive:
