@@ -37,6 +37,7 @@ TEST_CASES_PATH = REPO_ROOT / "tests" / "agent_test_cases.json"
 TEST_RESULTS_PATH = REPO_ROOT / "data" / "agent_test_results.json"
 
 SESSION_TIMEOUT_MINUTES = 30
+UUID_PATTERN = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
 SessionState = Literal[
     "planning",
@@ -319,13 +320,14 @@ async def run_claude_agent(
         cmd.extend(["--permission-mode", "default"])
     
     # Resume session if provided
-    if resume_session:
+    if resume_session and _is_uuid(resume_session):
         cmd.extend(["--resume", resume_session])
     
     # Output format
     cmd.extend(["--output-format", "text"])
     
-    # Add the message
+    # Add the message (use -- to avoid option parsing)
+    cmd.append("--")
     cmd.append(message)
     
     try:
@@ -355,6 +357,25 @@ async def run_claude_agent(
         
         raw_output = stdout.decode("utf-8", errors="replace")
         stderr_output = stderr.decode("utf-8", errors="replace")
+        extracted_session_id = _extract_uuid(f"{raw_output}\n{stderr_output}")
+        
+        if not raw_output.strip() and stderr_output.strip():
+            return AgentResult(
+                request=message,
+                response=f"Agent error: {stderr_output}",
+                status="error",
+                error=stderr_output,
+                duration_seconds=(datetime.now(timezone.utc) - start_time).total_seconds(),
+            )
+        
+        if not raw_output.strip() and process.returncode == 0:
+            return AgentResult(
+                request=message,
+                response="Agent returned empty response.",
+                status="error",
+                error="empty_response",
+                duration_seconds=(datetime.now(timezone.utc) - start_time).total_seconds(),
+            )
         
         if process.returncode != 0 and not raw_output.strip():
             return AgentResult(
@@ -370,7 +391,7 @@ async def run_claude_agent(
         result.request = message
         result.duration_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
         result.status = "success"
-        result.claude_session_id = session_id or ""
+        result.claude_session_id = extracted_session_id
         
         return result
         
@@ -417,6 +438,21 @@ def _get_username(update: Update) -> str:
     if update.message and update.message.from_user:
         return update.message.from_user.username or update.message.from_user.first_name or "unknown"
     return "unknown"
+
+
+def _is_uuid(value: str | None) -> bool:
+    """Check if value is a UUID string."""
+    if not value:
+        return False
+    return bool(UUID_PATTERN.fullmatch(value.strip()))
+
+
+def _extract_uuid(text: str) -> str:
+    """Extract a UUID from text if present."""
+    if not text:
+        return ""
+    matches = UUID_PATTERN.findall(text)
+    return matches[-1] if matches else ""
 
 
 async def agent_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -520,6 +556,12 @@ async def agent_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # Don't handle commands
     if text.startswith("/"):
+        return
+
+    # Allow agent test replies ("ok"/"not"/"skip") without /agent_test
+    test_context = context.user_data.get("agent_test_context")
+    if test_context and text.lower() in ("ok", "not", "skip"):
+        await agent_test_command(update, context)
         return
     
     key = _session_key(update)
@@ -637,44 +679,95 @@ async def agent_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             await _send_text(update, f"SESSION #{session_id}\n\nPLAN\n{result.plan or result.response}\n\nReply: 'ok' to execute, or give feedback")
 
 
+async def agent_test_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handle plain-text replies for agent tests in any chat.
+    """
+    if not update.message:
+        return
+    
+    text = (update.message.text or "").strip()
+    if not text or text.startswith("/"):
+        return
+    
+    if not context.user_data.get("agent_test_context"):
+        return
+    
+    await agent_test_command(update, context)
+
+
 # ============================================================================
 # Test Commands
 # ============================================================================
 
-def _load_test_cases() -> list[dict]:
-    """Load test cases from file."""
+def _load_test_cases_data() -> dict:
+    """Load test cases data from file."""
     if not TEST_CASES_PATH.exists():
-        return []
+        return {"test_cases": []}
     try:
         data = json.loads(TEST_CASES_PATH.read_text(encoding="utf-8"))
-        return data.get("test_cases", [])
+        if "test_cases" not in data:
+            data["test_cases"] = []
+        normalized = _normalize_test_cases_data(data)
+        if normalized is not None:
+            data = normalized
+            _save_test_cases_data(data)
+        return data
     except Exception:
-        return []
+        return {"test_cases": []}
 
 
-def _load_test_results() -> dict:
-    """Load test results from file."""
-    if not TEST_RESULTS_PATH.exists():
-        return {"last_run": None, "results": {}}
-    try:
-        return json.loads(TEST_RESULTS_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {"last_run": None, "results": {}}
+def _normalize_test_cases_data(data: dict) -> dict | None:
+    """Ensure test cases include status/plan/result fields."""
+    changed = False
+    for test_case in data.get("test_cases", []):
+        if "status" not in test_case:
+            test_case["status"] = "untested"
+            changed = True
+        if "plan" not in test_case:
+            test_case["plan"] = ""
+            changed = True
+        if "result" not in test_case:
+            test_case["result"] = ""
+            changed = True
+    return data if changed else None
 
 
-def _save_test_results(results: dict) -> None:
-    """Save test results to file."""
-    TEST_RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    results["last_run"] = datetime.now(timezone.utc).isoformat()
-    TEST_RESULTS_PATH.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+def _save_test_cases_data(data: dict) -> None:
+    """Save test cases data to file."""
+    TEST_CASES_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def _find_next_test(test_cases: list[dict], results: dict) -> dict | None:
-    """Find first test that is not passed and not skipped."""
+def _load_test_cases() -> list[dict]:
+    """Load test cases list from file."""
+    return _load_test_cases_data().get("test_cases", [])
+
+
+def _update_test_case(test_id: int | str, updates: dict) -> dict | None:
+    """Update a single test case by id."""
+    data = _load_test_cases_data()
+    for test_case in data.get("test_cases", []):
+        if str(test_case.get("id")) == str(test_id):
+            test_case.update(updates)
+            _save_test_cases_data(data)
+            return test_case
+    return None
+
+
+def _get_test_case(test_id: int | str) -> dict | None:
+    """Get a single test case by id."""
+    data = _load_test_cases_data()
+    for test_case in data.get("test_cases", []):
+        if str(test_case.get("id")) == str(test_id):
+            return test_case
+    return None
+
+
+def _find_next_test(test_cases: list[dict]) -> dict | None:
+    """Find first test that is untested."""
     for tc in test_cases:
-        test_id = str(tc.get("id", ""))
-        result = results.get("results", {}).get(test_id)
-        if result is None or result.get("status") not in ("passed", "skipped"):
+        status = (tc.get("status") or "untested").lower()
+        if status == "untested":
             return tc
     return None
 
@@ -684,6 +777,7 @@ def _format_test_output(test_case: dict, agent_result: AgentResult) -> str:
     lines = [
         f"TEST #{test_case.get('id')} [{test_case.get('category', '?')}]",
         f"Request: {test_case.get('input', '?')}",
+        f"Status: {(test_case.get('status') or 'untested')}",
         "",
         "Expected:",
         f"  Actions: {', '.join(test_case.get('expected_actions', []))}",
@@ -706,7 +800,7 @@ def _format_test_output(test_case: dict, agent_result: AgentResult) -> str:
         lines.append("(no file changes)")
     
     lines.append("")
-    lines.append("Reply: ok / not / skip")
+    lines.append("Reply: ok / not / skip, or send feedback to revise (or /agent_test ok)")
     
     return "\n".join(lines)
 
@@ -732,23 +826,63 @@ async def agent_test_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     
     if text.lower() == "reset":
-        _save_test_results({"last_run": None, "results": {}})
+        data = _load_test_cases_data()
+        for test_case in data.get("test_cases", []):
+            test_case["status"] = "untested"
+            test_case.pop("plan", None)
+            test_case.pop("result", None)
+        _save_test_cases_data(data)
         await _send_text(update, "Test results reset.")
+        return
+
+    if text.lower() in ("ok", "not", "skip") and not context.user_data.get("agent_test_context"):
+        await _send_text(update, "No active test. Run /agent_test to start.")
         return
     
     # Check if user is responding to a test
     test_context = context.user_data.get("agent_test_context")
-    if test_context and text.lower() in ("ok", "not", "skip"):
+    if test_context:
         current_test_id = test_context.get("current_test_id")
-        if current_test_id:
-            results = _load_test_results()
-            status_map = {"ok": "passed", "not": "failed", "skip": "skipped"}
-            results["results"][str(current_test_id)] = {
-                "status": status_map[text.lower()],
-                "run_at": datetime.now(timezone.utc).isoformat(),
+        if text.lower() in ("ok", "not", "skip"):
+            if current_test_id:
+                status_map = {"ok": "passed", "not": "skiped", "skip": "skiped"}
+                result_map = {"ok": "passed", "not": "failed", "skip": "skipped"}
+                updated = _update_test_case(
+                    current_test_id,
+                    {
+                        "status": status_map[text.lower()],
+                        "result": result_map[text.lower()],
+                    },
+                )
+                if updated:
+                    await _send_text(update, f"Test #{current_test_id} marked as {status_map[text.lower()]}.")
+            # Clear test context for next test
+            context.user_data.pop("agent_test_context", None)
+        elif current_test_id:
+            # Treat any other text as feedback to revise the plan
+            await _send_text(update, f"TEST #{current_test_id} | Revising plan...")
+            agent_result = await run_claude_agent(
+                message=f"User feedback: {text}\n\nPlease revise your plan based on this feedback.",
+                mode="plan",
+                resume_session=test_context.get("claude_session_id"),
+                session_id=f"test-{current_test_id}",
+            )
+            if agent_result.status != "error":
+                _update_test_case(
+                    current_test_id,
+                    {
+                        "plan": agent_result.plan or agent_result.response,
+                        "result": agent_result.response,
+                    },
+                )
+            context.user_data["agent_test_context"] = {
+                "current_test_id": current_test_id,
+                "claude_session_id": agent_result.claude_session_id,
             }
-            _save_test_results(results)
-            await _send_text(update, f"Test #{current_test_id} marked as {status_map[text.lower()]}.")
+            test_case = _get_test_case(current_test_id) or {"id": current_test_id}
+            output = _format_test_output(test_case, agent_result)
+            await _send_text(update, output)
+            return
     
     # Find and run next test
     test_cases = _load_test_cases()
@@ -756,15 +890,14 @@ async def agent_test_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await _send_text(update, "No test cases found. Create tests/agent_test_cases.json first.")
         return
     
-    results = _load_test_results()
-    next_test = _find_next_test(test_cases, results)
+    next_test = _find_next_test(test_cases)
     
     if not next_test:
         # All done - show summary
-        passed = sum(1 for r in results.get("results", {}).values() if r.get("status") == "passed")
-        failed = sum(1 for r in results.get("results", {}).values() if r.get("status") == "failed")
-        skipped = sum(1 for r in results.get("results", {}).values() if r.get("status") == "skipped")
-        await _send_text(update, f"All tests completed!\n\nPassed: {passed}\nFailed: {failed}\nSkipped: {skipped}\nTotal: {len(test_cases)}")
+        passed = sum(1 for tc in test_cases if (tc.get("status") or "untested") == "passed")
+        skipped = sum(1 for tc in test_cases if (tc.get("status") or "untested") == "skiped")
+        pending = sum(1 for tc in test_cases if (tc.get("status") or "untested") == "untested")
+        await _send_text(update, f"All tests completed!\n\nPassed: {passed}\nSkipped: {skipped}\nPending: {pending}\nTotal: {len(test_cases)}")
         return
     
     # Run the test
@@ -780,7 +913,16 @@ async def agent_test_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Store test context
     context.user_data["agent_test_context"] = {
         "current_test_id": next_test.get("id"),
+        "claude_session_id": agent_result.claude_session_id,
     }
+    if agent_result.status != "error":
+        _update_test_case(
+            next_test.get("id"),
+            {
+                "plan": agent_result.plan or agent_result.response,
+                "result": agent_result.response,
+            },
+        )
     
     # Format and send output
     output = _format_test_output(next_test, agent_result)
@@ -790,28 +932,22 @@ async def agent_test_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def _agent_test_status(update: Update) -> None:
     """Show test status."""
     test_cases = _load_test_cases()
-    results = _load_test_results()
     
     if not test_cases:
         await _send_text(update, "No test cases found.")
         return
     
-    passed = sum(1 for r in results.get("results", {}).values() if r.get("status") == "passed")
-    failed = sum(1 for r in results.get("results", {}).values() if r.get("status") == "failed")
-    skipped = sum(1 for r in results.get("results", {}).values() if r.get("status") == "skipped")
-    pending = len(test_cases) - passed - failed - skipped
+    passed = sum(1 for tc in test_cases if (tc.get("status") or "untested") == "passed")
+    skipped = sum(1 for tc in test_cases if (tc.get("status") or "untested") == "skiped")
+    pending = sum(1 for tc in test_cases if (tc.get("status") or "untested") == "untested")
     
     lines = [
         "TEST STATUS",
         f"Passed: {passed}",
-        f"Failed: {failed}",
         f"Skipped: {skipped}",
         f"Pending: {pending}",
         f"Total: {len(test_cases)}",
     ]
-    
-    if results.get("last_run"):
-        lines.append(f"\nLast run: {results['last_run']}")
     
     await _send_text(update, "\n".join(lines))
 
@@ -836,4 +972,12 @@ def build_agent_reply_handler():
             filters.REPLY
         ),
         agent_reply_handler,
+    )
+
+
+def build_agent_test_reply_handler():
+    """Build the reply handler for agent tests."""
+    return MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        agent_test_reply_handler,
     )

@@ -10,7 +10,11 @@ from typing import Iterable
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from .agent_command import build_agent_handlers, build_agent_reply_handler
+from .agent_command import (
+    build_agent_handlers,
+    build_agent_reply_handler,
+    build_agent_test_reply_handler,
+)
 from .daily_report import run_daily_report
 from .handle_message import DEFAULT_MODELS, _call_model, get_default_model_from_env, send_telegram_long_text
 from .pending_updates import approve_pending_update, list_pending_updates, reject_pending_update
@@ -291,6 +295,48 @@ async def reject_update_command(update: Update, context: ContextTypes.DEFAULT_TY
     await _send_text(update, f"Rejected: {res.get('file')} id={update_id}")
 
 
+async def delete_messages_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message:
+        return
+    chat_id = update.message.chat_id
+    start_message_id = update.message.message_id
+    delete_all = True
+    delete_count: int | None = None
+
+    if context.args:
+        raw = str(context.args[0]).strip()
+        if raw.lower() != "all":
+            try:
+                delete_count = int(raw)
+            except ValueError:
+                delete_count = None
+            if not delete_count or delete_count < 1:
+                await _send_text(update, "Usage: /delete_messages <number|all>")
+                return
+            delete_all = False
+
+    deleted = 0
+    failed = 0
+    limit = delete_count if delete_count is not None else start_message_id
+
+    for i in range(limit):
+        message_id = start_message_id - i
+        if message_id <= 0:
+            break
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+            deleted += 1
+        except Exception:
+            failed += 1
+            if delete_all:
+                break
+
+    if delete_all:
+        await _send_text(update, f"Deleted {deleted} messages. Failed: {failed}.")
+    else:
+        await _send_text(update, f"Deleted {deleted}/{delete_count} messages. Failed: {failed}.")
+
+
 def build_command_handlers() -> list[CommandHandler]:
     handlers = [
         CommandHandler("make_dayly_report", make_dayly_report_command),
@@ -309,6 +355,7 @@ def build_command_handlers() -> list[CommandHandler]:
         CommandHandler("approve_update", approve_update_command),
         CommandHandler("approve_all_updates", approve_all_updates_command),
         CommandHandler("reject_update", reject_update_command),
+        CommandHandler("delete_messages", delete_messages_command),
     ]
     # Add agent command handlers
     handlers.extend(build_agent_handlers())
@@ -319,4 +366,5 @@ def register_command_handlers(app: Application) -> None:
     for handler in build_command_handlers():
         app.add_handler(handler)
     # Add agent reply handler (for session continuity)
+    app.add_handler(build_agent_test_reply_handler())
     app.add_handler(build_agent_reply_handler())

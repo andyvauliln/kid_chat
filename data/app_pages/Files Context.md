@@ -321,6 +321,28 @@ Use it to quickly understand what each file is for and what sections it contains
 - **Structure**:
   - `add_pending_update()`, `list_pending_updates()`, `approve_pending_update()`, `reject_pending_update()`
 
+### `src/group_chat_telegram_ai/agent_command.py`
+- **Purpose**: Telegram `/agent` command that runs Claude Code CLI to execute code changes.
+- **Features**:
+  - Plan-first flow: Shows plan before execution, waits for user confirmation
+  - Session management: Keeps conversation context between messages (30 min timeout)
+  - Self-improvement: Can edit its own code when asked
+  - Logging: Records all agent actions to `data/agent_logs.jsonl`
+- **Structure**:
+  - `run_claude_agent()` - Runs Claude CLI with project context
+  - `agent_command()` - Handles `/agent` command
+  - `agent_reply_handler()` - Handles session replies (ok/feedback/answers)
+  - `agent_test_command()` - Interactive test runner (`/agent_test`)
+  - Session storage: `data/agent_sessions.json`
+- **Commands**:
+  - `/agent <request>` - Start new session or continue
+  - `/agent new <request>` - Force new session
+  - `/agent cancel` - Cancel current session
+  - `/agent status` - Show session state
+  - `/agent_test` - Run interactive tests
+  - `/agent_test status` - Show test progress
+  - `/agent_test reset` - Reset test results
+
 ### `src/group_chat_telegram_ai/onboarding_bot.py`
 - **Purpose**: Telegram onboarding flow (review pages, approve, and route onboarding questions).
 - **Structure**:

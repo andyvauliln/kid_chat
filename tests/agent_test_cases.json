@@ -9,201 +9,485 @@
       "id": 1,
       "category": "code_understanding",
       "input": "/agent what does bot.py do?",
-      "expected_actions": ["read"],
-      "expected_files": ["src/group_chat_telegram_ai/bot.py"],
-      "expected_response_contains": ["telegram", "handler", "command"]
+      "status": "passed",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/bot.py"
+      ],
+      "expected_response_contains": [
+        "telegram",
+        "handler",
+        "command"
+      ]
     },
     {
       "id": 2,
       "category": "code_understanding",
       "input": "/agent explain the daily report pipeline",
-      "expected_actions": ["read"],
-      "expected_files": ["src/group_chat_telegram_ai/daily_report.py"],
-      "expected_response_contains": ["summary", "stage", "report"]
+      "status": "passed",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/daily_report.py"
+      ],
+      "expected_response_contains": [
+        "summary",
+        "stage",
+        "report"
+      ]
     },
     {
       "id": 3,
       "category": "bug_fix",
-      "input": "/agent fix the typo in udpate_command function name in telegram_commands.py",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/telegram_commands.py"],
-      "expected_response_contains": ["fix", "rename", "update"]
+      "input": "/agent i don't see in agent logs full logs of agent actions i need mutch better logs ",
+      "status": "untested",
+      "plan": "I notice this is the start of a planning session, but I don't see the original user request that I should be planning for. The feedback message is empty, and there's no initial task description.\n\nCould you please provide:\n1. What feature or change would you like me to implement?\n2. Any specific requirements or constraints I should consider?\n\nOnce I understand what you'd like me to work on, I'll explore the codebase and create a detailed implementation plan.",
+      "result": "I notice this is the start of a planning session, but I don't see the original user request that I should be planning for. The feedback message is empty, and there's no initial task description.\n\nCould you please provide:\n1. What feature or change would you like me to implement?\n2. Any specific requirements or constraints I should consider?\n\nOnce I understand what you'd like me to work on, I'll explore the codebase and create a detailed implementation plan.",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        ""
+      ],
+      "expected_response_contains": [
+        "fix",
+        "rename",
+        "update"
+      ]
     },
     {
       "id": 4,
       "category": "bug_fix",
-      "input": "/agent there's a missing error handler in handle_message.py for empty responses, add one",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/handle_message.py"],
-      "expected_response_contains": ["error", "handling", "empty"]
+      "input": "/agent why we have 2 files for managing test cases, agent_test_cases.json and agent_test_results.json we can make in a first just flag passed or not",
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/handle_message.py"
+      ],
+      "expected_response_contains": [
+        "error",
+        "handling",
+        "empty"
+      ]
     },
     {
       "id": 5,
       "category": "new_feature",
       "input": "/agent add a /help command that lists all available commands",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/telegram_commands.py"],
-      "expected_response_contains": ["help", "command", "list"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/telegram_commands.py"
+      ],
+      "expected_response_contains": [
+        "help",
+        "command",
+        "list"
+      ]
     },
     {
       "id": 6,
       "category": "new_feature",
       "input": "/agent create a command to show system status like uptime and memory usage",
-      "expected_actions": ["edit"],
-      "expected_files": ["src/group_chat_telegram_ai/telegram_commands.py"],
-      "expected_response_contains": ["status", "uptime", "memory"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/telegram_commands.py"
+      ],
+      "expected_response_contains": [
+        "status",
+        "uptime",
+        "memory"
+      ]
     },
     {
       "id": 7,
       "category": "edit_data",
       "input": "/agent add a new video called Bluey to the video.json list",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["data/app_json/video.json"],
-      "expected_response_contains": ["Bluey", "added", "video"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "data/app_json/video.json"
+      ],
+      "expected_response_contains": [
+        "Bluey",
+        "added",
+        "video"
+      ]
     },
     {
       "id": 8,
       "category": "edit_data",
       "input": "/agent update Menu.md to add pizza as a Friday dinner option",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["data/app_pages/Menu.md"],
-      "expected_response_contains": ["pizza", "Friday", "dinner"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "data/app_pages/Menu.md"
+      ],
+      "expected_response_contains": [
+        "pizza",
+        "Friday",
+        "dinner"
+      ]
     },
     {
       "id": 9,
       "category": "edit_prompt",
       "input": "/agent make the morning_plan.md prompt shorter and more concise",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["prompts/morning_plan.md"],
-      "expected_response_contains": ["concise", "shorter", "prompt"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "prompts/morning_plan.md"
+      ],
+      "expected_response_contains": [
+        "concise",
+        "shorter",
+        "prompt"
+      ]
     },
     {
       "id": 10,
       "category": "edit_prompt",
       "input": "/agent add Indonesian language support to the message_router.md prompt",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["prompts/message_router.md"],
-      "expected_response_contains": ["Indonesian", "language"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "prompts/message_router.md"
+      ],
+      "expected_response_contains": [
+        "Indonesian",
+        "language"
+      ]
     },
     {
       "id": 11,
       "category": "refactoring",
       "input": "/agent refactor _chunk_text function in handle_message.py to be more readable with better variable names",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/handle_message.py"],
-      "expected_response_contains": ["refactor", "readable", "_chunk_text"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/handle_message.py"
+      ],
+      "expected_response_contains": [
+        "refactor",
+        "readable",
+        "_chunk_text"
+      ]
     },
     {
       "id": 12,
       "category": "refactoring",
       "input": "/agent extract common telegram helper functions from telegram_commands.py into a separate utils.py file",
-      "expected_actions": ["read", "edit", "create"],
-      "expected_files": ["src/group_chat_telegram_ai/telegram_commands.py"],
-      "expected_response_contains": ["extract", "utils", "helper"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit",
+        "create"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/telegram_commands.py"
+      ],
+      "expected_response_contains": [
+        "extract",
+        "utils",
+        "helper"
+      ]
     },
     {
       "id": 13,
       "category": "documentation",
       "input": "/agent update Files Context.md with documentation for agent_command.py",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["data/app_pages/Files Context.md"],
-      "expected_response_contains": ["agent_command", "updated", "documentation"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "data/app_pages/Files Context.md"
+      ],
+      "expected_response_contains": [
+        "agent_command",
+        "updated",
+        "documentation"
+      ]
     },
     {
       "id": 14,
       "category": "documentation",
       "input": "/agent add docstrings to all functions in update_engine.py that are missing them",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/update_engine.py"],
-      "expected_response_contains": ["docstring", "added", "function"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/update_engine.py"
+      ],
+      "expected_response_contains": [
+        "docstring",
+        "added",
+        "function"
+      ]
     },
     {
       "id": 15,
       "category": "self_improvement",
       "input": "/agent improve your own error handling in agent_command.py - add more specific error messages",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/agent_command.py"],
-      "expected_response_contains": ["error", "improved", "agent_command"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/agent_command.py"
+      ],
+      "expected_response_contains": [
+        "error",
+        "improved",
+        "agent_command"
+      ]
     },
     {
       "id": 16,
       "category": "self_improvement",
       "input": "/agent add a timeout configuration option to yourself so users can set custom timeouts",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/agent_command.py"],
-      "expected_response_contains": ["timeout", "configuration", "added"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/agent_command.py"
+      ],
+      "expected_response_contains": [
+        "timeout",
+        "configuration",
+        "added"
+      ]
     },
     {
       "id": 17,
       "category": "self_improvement",
       "input": "/agent optimize your response parsing to better detect file changes from claude output",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/agent_command.py"],
-      "expected_response_contains": ["parsing", "optimize", "file"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/agent_command.py"
+      ],
+      "expected_response_contains": [
+        "parsing",
+        "optimize",
+        "file"
+      ]
     },
     {
       "id": 18,
       "category": "clarification_needed",
       "input": "/agent fix it",
+      "status": "untested",
+      "plan": "",
+      "result": "",
       "expected_actions": [],
       "expected_files": [],
-      "expected_response_contains": ["what", "which", "clarify", "specify", "?"]
+      "expected_response_contains": [
+        "what",
+        "which",
+        "clarify",
+        "specify",
+        "?"
+      ]
     },
     {
       "id": 19,
       "category": "clarification_needed",
       "input": "/agent change the thing in that file",
+      "status": "untested",
+      "plan": "",
+      "result": "",
       "expected_actions": [],
       "expected_files": [],
-      "expected_response_contains": ["what", "which", "file", "?"]
+      "expected_response_contains": [
+        "what",
+        "which",
+        "file",
+        "?"
+      ]
     },
     {
       "id": 20,
       "category": "multi_file",
       "input": "/agent rename the project from group_chat to family_assistant in pyproject.toml, package.json, and README.md",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["pyproject.toml", "README.md", "package.json"],
-      "expected_response_contains": ["rename", "family_assistant"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "pyproject.toml",
+        "README.md",
+        "package.json"
+      ],
+      "expected_response_contains": [
+        "rename",
+        "family_assistant"
+      ]
     },
     {
       "id": 21,
       "category": "multi_file",
       "input": "/agent add debug logging to all command handlers in bot.py and telegram_commands.py",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["src/group_chat_telegram_ai/bot.py", "src/group_chat_telegram_ai/telegram_commands.py"],
-      "expected_response_contains": ["logging", "debug", "handlers"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/bot.py",
+        "src/group_chat_telegram_ai/telegram_commands.py"
+      ],
+      "expected_response_contains": [
+        "logging",
+        "debug",
+        "handlers"
+      ]
     },
     {
       "id": 22,
       "category": "analysis",
       "input": "/agent find all TODO comments in the codebase and list them",
-      "expected_actions": ["read"],
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read"
+      ],
       "expected_files": [],
-      "expected_response_contains": ["TODO", "found"]
+      "expected_response_contains": [
+        "TODO",
+        "found"
+      ]
     },
     {
       "id": 23,
       "category": "analysis",
       "input": "/agent which python files have the most lines of code? give me top 5",
-      "expected_actions": ["read"],
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read"
+      ],
       "expected_files": [],
-      "expected_response_contains": ["lines", "largest", "files"]
+      "expected_response_contains": [
+        "lines",
+        "largest",
+        "files"
+      ]
     },
     {
       "id": 24,
       "category": "test_creation",
       "input": "/agent write unit tests for the pending_updates.py module",
-      "expected_actions": ["read", "create"],
-      "expected_files": ["src/group_chat_telegram_ai/pending_updates.py"],
-      "expected_response_contains": ["test", "pending_updates"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "create"
+      ],
+      "expected_files": [
+        "src/group_chat_telegram_ai/pending_updates.py"
+      ],
+      "expected_response_contains": [
+        "test",
+        "pending_updates"
+      ]
     },
     {
       "id": 25,
       "category": "config_change",
       "input": "/agent add a new pm2 app in ecosystem.config.js to run a health check every hour",
-      "expected_actions": ["read", "edit"],
-      "expected_files": ["ecosystem.config.js"],
-      "expected_response_contains": ["pm2", "health", "added"]
+      "status": "untested",
+      "plan": "",
+      "result": "",
+      "expected_actions": [
+        "read",
+        "edit"
+      ],
+      "expected_files": [
+        "ecosystem.config.js"
+      ],
+      "expected_response_contains": [
+        "pm2",
+        "health",
+        "added"
+      ]
     }
   ]
 }

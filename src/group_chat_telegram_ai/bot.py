@@ -2,9 +2,10 @@ import json
 import os
 
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import BotCommand, BotCommandScopeAllGroupChats, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
+from .telegram_commands import register_command_handlers
 
 def _require_env(name: str) -> str:
     value = os.environ.get(name)
@@ -41,6 +42,38 @@ def _log_sent(message: object) -> None:
         return
     print(">>> SENT MESSAGE >>>")
     print(_json_dump(message))
+
+
+def _build_bot_commands() -> list[BotCommand]:
+    return [
+        BotCommand("ai", "Ask the assistant"),
+        BotCommand("ping", "Health check"),
+        BotCommand("make_dayly_report", "Generate daily report"),
+        BotCommand("translate_last_message_to_ind", "Translate last message to Indonesian"),
+        BotCommand("show_last_udpates", "Show last updates (legacy typo)"),
+        BotCommand("show_last_updates", "Show last updates"),
+        BotCommand("show_last_day_report", "Show latest daily report"),
+        BotCommand("show_last_week_report", "Show latest weekly report"),
+        BotCommand("show_last_month_report", "Show latest monthly report"),
+        BotCommand("show_report_on_date", "Show daily report by date"),
+        BotCommand("show_last_morning_plan", "Show latest morning plan"),
+        BotCommand("show_morning_plan", "Show morning plan for today"),
+        BotCommand("udpate", "Queue update (legacy typo)"),
+        BotCommand("update", "Queue update"),
+        BotCommand("pending_updates", "List pending updates"),
+        BotCommand("approve_update", "Approve a pending update"),
+        BotCommand("approve_all_updates", "Approve all pending updates"),
+        BotCommand("reject_update", "Reject a pending update"),
+        BotCommand("delete_messages", "Delete recent messages"),
+        BotCommand("agent", "Run coding agent"),
+        BotCommand("agent_test", "Run agent test cases"),
+    ]
+
+
+async def _set_bot_commands(app: Application) -> None:
+    commands = _build_bot_commands()
+    await app.bot.set_my_commands(commands)
+    await app.bot.set_my_commands(commands, scope=BotCommandScopeAllGroupChats())
 
 
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -105,6 +138,7 @@ def build_application(bot_token: str) -> Application:
     app.add_handler(CommandHandler("ping", ping_command))
     # DMs: respond to regular text.
     app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT & ~filters.COMMAND, dm_text))
+    register_command_handlers(app)
     return app
  
  
@@ -115,15 +149,16 @@ def run_bot() -> None:
     announce = (_env("ANNOUNCE_ON_START") or "").lower() in {"1", "true", "yes", "y", "on"}
     app = build_application(bot_token)
 
-    if group_id and announce:
-        async def _announce(_: Application) -> None:
+    async def _post_init(_: Application) -> None:
+        await _set_bot_commands(app)
+        if group_id and announce:
             sent = await app.bot.send_message(
                 chat_id=int(group_id),
                 text="✅ Assistant bot is online. Use /ai <msg>.",
             )
             _log_sent(sent)
 
-        app.post_init = _announce
+    app.post_init = _post_init
 
     app.run_polling(drop_pending_updates=True)
 
